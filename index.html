@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Info Derivadas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; }
+        .chat-bubble-1 { background-color: #3b82f6; border-radius: 1rem 1rem 1rem 0; }
+        .chat-bubble-2 { background-color: #475569; border-radius: 1rem 1rem 0 1rem; }
+        .branch-line { border-left: 2px dashed #475569; margin-left: 1rem; padding-left: 1rem; }
+    </style>
+</head>
+<body class="flex flex-col h-screen font-sans">
+
+    <!-- Header -->
+    <header class="bg-slate-800 p-4 shadow-md flex justify-between items-center z-10">
+        <h1 class="text-xl font-bold text-blue-400"><i class="fas fa-network-wired mr-2"></i> Info Derivadas</h1>
+        <div class="flex gap-4">
+            <button class="text-slate-300 hover:text-white"><i class="fas fa-book-open"></i> Estudar</button>
+            <button class="text-slate-300 hover:text-white"><i class="fas fa-user-circle text-xl"></i></button>
+        </div>
+    </header>
+
+    <!-- Chat Area -->
+    <main class="flex-1 overflow-y-auto p-4 space-y-6" id="chat-container">
+        <!-- Messages will be injected here by JS -->
+    </main>
+
+    <!-- Controls / Input Area -->
+    <footer class="bg-slate-800 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div id="action-area" class="max-w-3xl mx-auto flex flex-col gap-2">
+            <!-- Padrões Dropdown -->
+            <select id="standard-questions" class="w-full bg-slate-700 text-white p-2 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-400">
+                <option value="">Selecione uma pergunta padrão...</option>
+                <option value="O que significa isso?">O que significa isso?</option>
+                <option value="Pode me dar um exemplo?">Pode me dar um exemplo?</option>
+                <option value="Qual a exceção à essa regra?">Qual a exceção à essa regra?</option>
+                <option value="custom">Escrever pergunta personalizada...</option>
+            </select>
+
+            <div class="flex gap-2">
+                <input type="text" id="message-input" placeholder="Digite sua mensagem..." class="flex-1 bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-400">
+                
+                <button title="Anexar Imagem" class="bg-slate-700 p-3 rounded-lg hover:bg-slate-600 transition">
+                    <i class="fas fa-image text-slate-300"></i>
+                </button>
+                <button title="Privacidade" class="bg-slate-700 p-3 rounded-lg hover:bg-slate-600 transition" id="btn-privacy">
+                    <i class="fas fa-lock text-red-400" id="icon-privacy"></i>
+                </button>
+                <button id="btn-send" class="bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-500 transition">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Simulação de Estado
+        let currentNodeId = null; // Onde estamos na árvore
+        let currentSpeaker = 1; // 1 = Pergunta, 2 = Resposta
+        let isPrivate = true;
+
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const btnSend = document.getElementById('btn-send');
+        const selectStandard = document.getElementById('standard-questions');
+        const btnPrivacy = document.getElementById('btn-privacy');
+        const iconPrivacy = document.getElementById('icon-privacy');
+
+        // Toggle Privacidade
+        btnPrivacy.addEventListener('click', () => {
+            isPrivate = !isPrivate;
+            iconPrivacy.className = isPrivate ? 'fas fa-lock text-red-400' : 'fas fa-globe text-green-400';
+        });
+
+        // Selecionar pergunta padrão preenche o input
+        selectStandard.addEventListener('change', (e) => {
+            if(e.target.value !== 'custom' && e.target.value !== '') {
+                messageInput.value = e.target.value;
+            } else {
+                messageInput.value = '';
+                messageInput.focus();
+            }
+        });
+
+        // Função para adicionar balão no HTML
+        function appendMessage(text, speaker, nodeId) {
+            const isPerson1 = speaker === 1;
+            const alignClass = isPerson1 ? 'justify-end' : 'justify-start';
+            const bubbleClass = isPerson1 ? 'chat-bubble-1 text-white' : 'chat-bubble-2 text-slate-100';
+            const author = isPerson1 ? 'Você (P1)' : 'Interlocutor (P2)';
+
+            const msgHtml = `
+                <div class="flex ${alignClass} mb-4 animate-fade-in" data-node-id="${nodeId}">
+                    <div class="max-w-[85%] flex flex-col">
+                        <span class="text-xs text-slate-400 mb-1 ${isPerson1 ? 'text-right' : 'text-left'}">${author}</span>
+                        <div class="${bubbleClass} p-4 shadow-lg relative group">
+                            <p class="text-sm md:text-base leading-relaxed">${text}</p>
+                            
+                            <!-- Ações da mensagem (Áudio, Ramificar) -->
+                            <div class="absolute top-2 ${isPerson1 ? '-left-12' : '-right-12'} opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
+                                <button title="Ouvir Áudio" onclick="playAudio(${nodeId})" class="bg-slate-700 p-2 rounded-full text-xs hover:bg-slate-600">
+                                    <i class="fas fa-volume-up text-blue-300"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatContainer.insertAdjacentHTML('beforeend', msgHtml);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Função para mostrar opções de ramificação (filhos de um nó)
+        function showBranches(branches) {
+            if(branches.length === 0) return;
+            
+            let branchesHtml = `<div class="branch-line flex flex-col gap-2 my-4">
+                <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Derivações possíveis:</span>
+            `;
+            
+            branches.forEach(b => {
+                branchesHtml += `
+                    <button onclick="loadPath(${b.id})" class="text-left bg-slate-800 p-3 rounded border border-slate-700 hover:border-blue-500 hover:bg-slate-700 transition text-sm text-slate-300">
+                        <i class="fas fa-code-branch mr-2 text-blue-500"></i> ${b.content}
+                    </button>
+                `;
+            });
+            branchesHtml += `</div>`;
+            chatContainer.insertAdjacentHTML('beforeend', branchesHtml);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Simulação de Envio (Aqui você conectaria com api.php)
+        btnSend.addEventListener('click', () => {
+            const text = messageInput.value.trim();
+            if(!text) return;
+
+            // Simulando chamada para api.php?action=add_node
+            const fakeNewNodeId = Math.floor(Math.random() * 1000);
+            
+            appendMessage(text, currentSpeaker, fakeNewNodeId);
+            currentNodeId = fakeNewNodeId;
+            messageInput.value = '';
+            
+            // Alterna o turno
+            currentSpeaker = currentSpeaker === 1 ? 2 : 1;
+            
+            if (currentSpeaker === 2) {
+                messageInput.placeholder = "Digite a resposta do Personagem 2...";
+                selectStandard.style.display = 'none'; // Respostas não usam perguntas padrão
+            } else {
+                messageInput.placeholder = "Faça uma nova pergunta derivada...";
+                selectStandard.style.display = 'block';
+            }
+        });
+
+        function playAudio(nodeId) {
+            // Aqui chamaria o fish_audio.php via fetch
+            alert("Chamando fish_audio.php para o nó ID: " + nodeId);
+        }
+
+        function loadPath(nodeId) {
+            // Simulando chamada para api.php?action=get_chat_path
+            alert("Carregando ramificação " + nodeId);
+        }
+
+        // Mensagem inicial de tutorial
+        appendMessage("Bem-vindo ao Info Derivadas. Faça a sua primeira pergunta para iniciar a árvore de conhecimento.", 2, 0);
+
+    </script>
+</body>
+</html>
