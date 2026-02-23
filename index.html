@@ -17,40 +17,85 @@
         
         .branch-item { transition: all 0.2s; }
         .branch-item:active { transform: scale(0.98); }
+
+        /* Utilitário para esconder elementos */
+        .hidden-app { display: none !important; }
     </style>
 </head>
 <body class="flex flex-col h-screen font-sans overflow-hidden">
 
-    <!-- Header -->
-    <header class="bg-slate-900/80 backdrop-blur-md p-4 shadow-md flex justify-between items-center z-20 border-b border-slate-700">
+    <!-- TELA DE LOGIN / CADASTRO -->
+    <div id="auth-screen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700">
+            <div class="text-center mb-8">
+                <i class="fas fa-network-wired text-5xl text-blue-500 mb-3"></i>
+                <h1 class="text-2xl font-bold text-white">Info Derivadas</h1>
+                <p class="text-slate-400 text-sm mt-1" id="auth-subtitle">Faça login para acessar seus pensamentos.</p>
+            </div>
+
+            <!-- Formulário -->
+            <form id="auth-form" class="space-y-4">
+                <div id="register-fields" class="hidden-app space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">E-mail</label>
+                        <input type="email" id="auth-email" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Usuário</label>
+                    <input type="text" id="auth-username" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Senha</label>
+                    <input type="password" id="auth-password" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div id="auth-error" class="text-red-400 text-sm hidden-app text-center"></div>
+
+                <button type="submit" id="auth-submit-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition mt-4">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <button type="button" id="toggle-auth-mode" class="text-sm text-blue-400 hover:text-blue-300">
+                    Não tem uma conta? Cadastre-se
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- FIM TELA LOGIN -->
+
+    <!-- Header do App -->
+    <header id="app-header" class="hidden-app bg-slate-900/80 backdrop-blur-md p-4 shadow-md flex justify-between items-center z-20 border-b border-slate-700">
         <h1 class="text-lg font-bold text-blue-400 flex items-center cursor-pointer" onclick="app.goHome()">
             <i class="fas fa-network-wired mr-2"></i> Info Derivadas
         </h1>
-        <div class="flex gap-4 text-slate-300">
-            <!-- Botão de modo de estudo (preparando terreno para a próxima feature) -->
-            <button class="hover:text-emerald-400 transition flex items-center gap-1" title="Modo Estudo (Repetição Espaçada)" onclick="alert('Modo de Estudo (SM-2) será implementado em breve!')">
+        <div class="flex gap-4 text-slate-300 items-center">
+            <span id="user-greeting" class="text-sm text-slate-400 hidden md:block"></span>
+            <button class="hover:text-emerald-400 transition" title="Modo Estudo (Em breve)">
                 <i class="fas fa-brain text-xl"></i>
             </button>
-            <button class="hover:text-blue-400 transition" title="Meu Perfil"><i class="fas fa-user-circle text-xl"></i></button>
+            <button onclick="Auth.logout()" class="hover:text-red-400 transition ml-2" title="Sair do sistema">
+                <i class="fas fa-sign-out-alt text-xl"></i>
+            </button>
         </div>
     </header>
 
     <!-- Main Chat Area -->
-    <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-32" id="chat-container">
-        <!-- Messages injected here -->
-    </main>
+    <main class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-32" id="chat-container"></main>
 
     <!-- Controls / Input Area -->
-    <footer class="bg-slate-800 border-t border-slate-700 p-3 md:p-4 absolute bottom-0 w-full z-20">
+    <footer id="app-footer" class="hidden-app bg-slate-800 border-t border-slate-700 p-3 md:p-4 absolute bottom-0 w-full z-20">
         <div class="max-w-4xl mx-auto flex flex-col gap-2">
             
-            <!-- Context Indicator -->
             <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 flex justify-between items-center">
                 <span><i class="fas fa-reply fa-rotate-180 mr-1 text-blue-400"></i> Respondendo ao contexto...</span>
                 <span id="speaker-indicator" class="font-bold text-blue-300 bg-slate-900 px-2 py-1 rounded">TURNO: PERSONAGEM 1</span>
             </div>
 
-            <!-- Input Principal -->
             <div class="flex gap-2 items-center">
                 <button title="Anexar Imagem" class="text-slate-400 hover:text-white p-2 rounded-lg transition">
                     <i class="fas fa-image text-xl"></i>
@@ -70,37 +115,150 @@
     </footer>
 
     <script>
+        // --- AUTENTICAÇÃO ---
+        const Auth = {
+            tokenKey: 'info_derivadas_token',
+            isLoginMode: true,
+
+            init() {
+                this.bindEvents();
+                this.checkSession();
+            },
+
+            bindEvents() {
+                document.getElementById('toggle-auth-mode').addEventListener('click', () => this.toggleMode());
+                document.getElementById('auth-form').addEventListener('submit', (e) => this.handleSubmit(e));
+            },
+
+            toggleMode() {
+                this.isLoginMode = !this.isLoginMode;
+                document.getElementById('register-fields').classList.toggle('hidden-app', this.isLoginMode);
+                document.getElementById('auth-submit-btn').textContent = this.isLoginMode ? 'Entrar' : 'Criar Conta';
+                document.getElementById('toggle-auth-mode').textContent = this.isLoginMode ? 'Não tem uma conta? Cadastre-se' : 'Já tem uma conta? Entre';
+                document.getElementById('auth-subtitle').textContent = this.isLoginMode ? 'Faça login para acessar seus pensamentos.' : 'Crie sua conta. Tudo será criptografado.';
+                document.getElementById('auth-error').classList.add('hidden-app');
+            },
+
+            async handleSubmit(e) {
+                e.preventDefault();
+                const username = document.getElementById('auth-username').value;
+                const password = document.getElementById('auth-password').value;
+                const email = document.getElementById('auth-email').value;
+
+                const endpoint = this.isLoginMode ? 'login' : 'register';
+                const payload = this.isLoginMode ? { username, password } : { username, email, password };
+
+                try {
+                    const res = await fetch(`auth.php?action=${endpoint}`, {
+                        method: 'POST',
+                        body: JSON.stringify(payload),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'success') {
+                        localStorage.setItem(this.tokenKey, data.token);
+                        this.showApp(data.user.username);
+                    } else {
+                        this.showError(data.message);
+                    }
+                } catch (err) {
+                    this.showError("Erro de conexão com o servidor.");
+                }
+            },
+
+            async checkSession() {
+                const token = localStorage.getItem(this.tokenKey);
+                if (!token) return; // Fica na tela de login
+
+                try {
+                    const res = await fetch('auth.php?action=verify', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await res.json();
+                    
+                    if (data.status === 'success') {
+                        this.showApp(data.user.username);
+                    } else {
+                        localStorage.removeItem(this.tokenKey);
+                    }
+                } catch(e) { console.error(e); }
+            },
+
+            async logout() {
+                const token = localStorage.getItem(this.tokenKey);
+                if(token) {
+                    await fetch('auth.php?action=logout', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                }
+                localStorage.removeItem(this.tokenKey);
+                location.reload(); // Recarrega para voltar à tela de login limpa
+            },
+
+            showApp(username) {
+                document.getElementById('auth-screen').classList.add('hidden-app');
+                document.getElementById('app-header').classList.remove('hidden-app');
+                document.getElementById('chat-container').classList.remove('hidden-app');
+                document.getElementById('app-footer').classList.remove('hidden-app');
+                document.getElementById('user-greeting').textContent = `Olá, ${username}`;
+                
+                app.init(); // Inicia o sistema principal após logar
+            },
+
+            showError(msg) {
+                const errDiv = document.getElementById('auth-error');
+                errDiv.textContent = msg;
+                errDiv.classList.remove('hidden-app');
+            },
+
+            getToken() {
+                return localStorage.getItem(this.tokenKey);
+            }
+        };
+
         // --- API / BACKEND COMMUNICATION ---
-        // Altere para "false" quando for usar o PHP real
-        const USE_MOCK = true; 
+        const USE_MOCK = false; // AGORA USAMOS O BANCO REAL
 
         class Api {
-            static async fetch(action, params = {}, method = 'GET') {
-                if (USE_MOCK) return MockBackend.handle(action, params, method);
+            static getHeaders() {
+                return {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${Auth.getToken()}` // Injeta o token em todas as requisições
+                };
+            }
 
+            static async fetch(action, params = {}, method = 'GET') {
                 const url = new URL('api.php', window.location.href);
                 url.searchParams.append('action', action);
                 
-                if (method === 'GET') {
-                    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-                    const res = await fetch(url);
-                    return res.json();
-                } else {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        body: JSON.stringify(params),
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    return res.json();
+                try {
+                    if (method === 'GET') {
+                        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+                        const res = await fetch(url, { headers: this.getHeaders() });
+                        if(res.status === 401) Auth.logout(); // Se o token expirou, desloga
+                        return res.json();
+                    } else {
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            body: JSON.stringify(params),
+                            headers: this.getHeaders()
+                        });
+                        if(res.status === 401) Auth.logout();
+                        return res.json();
+                    }
+                } catch(e) {
+                    console.error("Erro na API:", e);
+                    return { error: true };
                 }
             }
 
             static async generateAudio(nodeId) {
-                if (USE_MOCK) {
-                    alert(`Gerando áudio (Mock) para o nó ${nodeId}...`);
-                    return { status: 'ok' };
-                }
-                const res = await fetch(`fish_audio.php?id=${nodeId}`);
+                // Para o áudio também precisaremos enviar o token agora
+                const res = await fetch(`fish_audio.php?id=${nodeId}`, {
+                    headers: this.getHeaders()
+                });
                 return res.json();
             }
         }
@@ -115,20 +273,27 @@
 
             init() {
                 this.bindEvents();
-                this.loadPath(null); // Inicia da raiz
+                this.loadPath(null); 
             },
 
             bindEvents() {
+                // Previne múltiplos binds caso app.init rode duas vezes
+                const btnSend = document.getElementById('btn-send');
+                const msgInput = document.getElementById('message-input');
+                const btnPrivacy = document.getElementById('btn-privacy');
+                
+                btnSend.replaceWith(btnSend.cloneNode(true));
+                msgInput.replaceWith(msgInput.cloneNode(true));
+                btnPrivacy.replaceWith(btnPrivacy.cloneNode(true));
+
                 document.getElementById('btn-send').addEventListener('click', () => this.sendMessage());
                 document.getElementById('message-input').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.sendMessage();
                 });
                 
-                const btnPrivacy = document.getElementById('btn-privacy');
-                const iconPrivacy = document.getElementById('icon-privacy');
-                btnPrivacy.addEventListener('click', () => {
+                document.getElementById('btn-privacy').addEventListener('click', () => {
                     this.isPrivate = !this.isPrivate;
-                    iconPrivacy.className = this.isPrivate ? 'fas fa-lock text-red-400' : 'fas fa-globe text-green-400';
+                    document.getElementById('icon-privacy').className = this.isPrivate ? 'fas fa-lock text-red-400' : 'fas fa-globe text-green-400';
                 });
             },
 
@@ -264,42 +429,8 @@
             }
         };
 
-        // --- MOCK BACKEND PARA TESTE NO NAVEGADOR ---
-        const MockBackend = {
-            db: [
-                {id: 1, parent_id: null, speaker: 1, content: "O que é React?"},
-                {id: 2, parent_id: 1, speaker: 2, content: "É uma biblioteca JavaScript para construção de interfaces."},
-                {id: 3, parent_id: 2, speaker: 1, content: "Como eu crio um componente nele?"}, // Orgânico, não padrão
-                {id: 4, parent_id: 3, speaker: 2, content: "Você cria uma função JavaScript que retorna JSX."},
-                {id: 5, parent_id: 2, speaker: 1, content: "Ele é melhor que o Angular?"}, // Orgânico
-                {id: 6, parent_id: 5, speaker: 2, content: "Depende do caso de uso. React é focado apenas na view."}
-            ],
-            nextId: 7,
-            
-            async handle(action, params, method) {
-                await new Promise(r => setTimeout(r, 200));
-                if(action === 'add_node') {
-                    const node = { id: this.nextId++, parent_id: params.parent_id, speaker: params.speaker, content: params.content };
-                    this.db.push(node);
-                    return { status: 'success', id: node.id };
-                }
-                if(action === 'get_chat_path') {
-                    let path = [];
-                    let curr = this.db.find(n => n.id === params.node_id);
-                    while(curr) {
-                        path.unshift(curr);
-                        curr = this.db.find(n => n.id === curr.parent_id);
-                    }
-                    return { status: 'success', path };
-                }
-                if(action === 'get_branches') {
-                    const branches = this.db.filter(n => n.parent_id === params.parent_id);
-                    return { status: 'success', branches };
-                }
-            }
-        };
-
-        window.addEventListener('DOMContentLoaded', () => app.init());
+        // Inicia checando a sessão ao invés de abrir o app direto
+        window.addEventListener('DOMContentLoaded', () => Auth.init());
     </script>
 </body>
 </html>
