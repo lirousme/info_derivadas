@@ -10,8 +10,6 @@
         :root {
             --sat: env(safe-area-inset-top);
             --sab: env(safe-area-inset-bottom);
-            --sal: env(safe-area-inset-left);
-            --sar: env(safe-area-inset-right);
         }
 
         body { 
@@ -23,18 +21,14 @@
         .pb-safe { padding-bottom: max(var(--sab), 1rem); }
         .pt-safe { padding-top: max(var(--sat), 0.5rem); }
         
-        .chat-bubble-1 { background-color: #2563eb; border-radius: 1.2rem 1.2rem 1.2rem 0.3rem; }
-        .chat-bubble-2 { background-color: #334155; border-radius: 1.2rem 1.2rem 0.3rem 1.2rem; }
+        .chat-bubble-1 { background-color: #2563eb; }
+        .chat-bubble-2 { background-color: #334155; }
         
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-        
-        .branch-item { transition: all 0.2s; }
-        .branch-item:active { transform: scale(0.98); }
 
         .hidden-app { display: none !important; }
-
         .nav-btn.active { color: #60a5fa; border-bottom: 2px solid #60a5fa; }
 
         input[type="text"], input[type="email"], input[type="password"] {
@@ -44,9 +38,8 @@
 </head>
 <body class="flex flex-col font-sans overflow-hidden w-full max-w-full">
 
-    <!-- Notificação Flutuante (Toast) -->
     <div id="toast-notification" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-emerald-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-emerald-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]">
-        <i class="fas fa-check-circle mr-2 text-lg"></i> <span class="font-bold text-sm" id="toast-message">Salvo nos Estudos</span>
+        <i class="fas fa-check-circle mr-2 text-lg" id="toast-icon"></i> <span class="font-bold text-sm" id="toast-message">Salvo nos Estudos</span>
     </div>
 
     <!-- TELA DE LOGIN / CADASTRO -->
@@ -80,7 +73,6 @@
             </div>
         </div>
     </div>
-    <!-- FIM TELA LOGIN -->
 
     <!-- Header do App -->
     <header id="app-header" class="hidden-app flex-none bg-slate-900/80 backdrop-blur-md shadow-md flex flex-col z-20 border-b border-slate-700 pt-safe">
@@ -104,23 +96,26 @@
                 <i class="fas fa-brain mr-1"></i> Fila de Estudo
                 <span id="study-badge" class="hidden-app ml-1 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">0</span>
             </button>
+            <!-- NOVA ABA DE PERFIL -->
+            <button id="tab-profile" class="nav-btn pb-3 transition whitespace-nowrap" onclick="app.switchTab('profile')">
+                <i class="fas fa-user-circle mr-1"></i> Meu Perfil
+            </button>
         </div>
     </header>
 
     <!-- VIEWS PRINCIPAIS -->
     <main id="view-explore" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
     <main id="view-study" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
+    <main id="view-profile" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-4 scroll-smooth bg-slate-900"></main>
 
-    <!-- FOOTERS -->
+    <!-- FOOTER CRIAR -->
     <footer id="footer-explore" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto flex flex-col gap-2">
-            <!-- Indicador de contexto e Botão de Finalizar Chat -->
             <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 hidden-app justify-between items-center">
-                <span class="flex items-center"><i class="fas fa-reply fa-rotate-180 mr-1 text-blue-400"></i> Respondendo...</span>
-                
+                <span class="flex items-center"><i class="fas fa-reply fa-rotate-180 mr-1 text-blue-400"></i> Construindo ramo...</span>
                 <div class="flex items-center gap-3">
-                    <button id="btn-finish-chat" onclick="app.finishChat()" class="bg-red-500/10 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                        <i class="fas fa-flag-checkered"></i> Finalizar chat
+                    <button id="btn-finish-chat" onclick="app.finishChat()" class="bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 border border-blue-500/50 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                        <i class="fas fa-save"></i> Finalizar & Criar Chat
                     </button>
                     <span id="speaker-indicator" class="font-bold text-blue-300 bg-slate-900 px-2 py-1 rounded truncate max-w-[150px] text-right">T: P1</span>
                 </div>
@@ -139,15 +134,16 @@
         </div>
     </footer>
 
+    <!-- FOOTER ESTUDO -->
     <footer id="footer-study" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto text-center flex flex-col gap-3">
             <p class="text-sm text-slate-300 font-semibold">Leitura concluída? Escolha o próximo passo:</p>
             <div class="flex gap-2 justify-center">
                 <button onclick="app.submitStudy()" class="flex-1 text-sm md:text-base bg-emerald-900/40 hover:bg-emerald-800/80 text-emerald-300 border border-emerald-700/50 py-3 rounded-xl font-medium transition flex justify-center items-center gap-1 md:gap-2">
-                    <i class="fas fa-check-circle"></i> Concluído
+                    <i class="fas fa-check-circle"></i> Apenas Revisar
                 </button>
                 <button onclick="app.continueChat()" class="flex-1 text-sm md:text-base bg-blue-900/60 hover:bg-blue-800/80 text-blue-200 border border-blue-500/50 py-3 rounded-xl font-medium transition shadow-[0_0_15px_rgba(59,130,246,0.2)] flex justify-center items-center gap-1 md:gap-2">
-                    <i class="fas fa-code-branch"></i> Derivar
+                    <i class="fas fa-code-branch"></i> Derivar Novo Chat
                 </button>
             </div>
         </div>
@@ -211,11 +207,8 @@
                 if (!token) return;
 
                 try {
-                    const res = await fetch('auth.php?action=verify', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                    const res = await fetch('auth.php?action=verify', { headers: { 'Authorization': `Bearer ${token}` } });
                     const data = await res.json();
-                    
                     if (data.status === 'success') {
                         this.showApp(data.user.username);
                     } else {
@@ -227,10 +220,7 @@
             async logout() {
                 const token = localStorage.getItem(this.tokenKey);
                 if(token) {
-                    await fetch('auth.php?action=logout', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                    await fetch('auth.php?action=logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
                 }
                 localStorage.removeItem(this.tokenKey);
                 location.reload();
@@ -254,13 +244,7 @@
 
         // --- API COMMUNICATION ---
         class Api {
-            static getHeaders() {
-                return {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${Auth.getToken()}`
-                };
-            }
-
+            static getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Auth.getToken()}` }; }
             static async fetch(action, params = {}, method = 'GET') {
                 const url = new URL('api.php', window.location.href);
                 url.searchParams.append('action', action);
@@ -271,20 +255,13 @@
                         if(res.status === 401) Auth.logout();
                         return res.json();
                     } else {
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            body: JSON.stringify(params),
-                            headers: this.getHeaders()
-                        });
+                        const res = await fetch(url, { method: 'POST', body: JSON.stringify(params), headers: this.getHeaders() });
                         if(res.status === 401) Auth.logout();
                         return res.json();
                     }
                 } catch(e) { return { error: true }; }
             }
-            static async generateAudio(nodeId) {
-                const res = await fetch(`fish_audio.php?id=${nodeId}`, { headers: this.getHeaders() });
-                return res.json();
-            }
+            static async generateAudio(nodeId) { return (await fetch(`fish_audio.php?id=${nodeId}`, { headers: this.getHeaders() })).json(); }
         }
 
         // --- APP STATE & LOGIC ---
@@ -295,7 +272,9 @@
             isPrivate: true,
             chatPath: [],        
             
-            // Variáveis do Modo Estudo
+            isDeriving: false, 
+            derivationBaseId: null, // Guarda o ID do ponto exato onde a cópia terminou
+            
             studyQueue: [],
             currentStudyNode: null,
             toastTimeout: null,
@@ -317,10 +296,7 @@
 
                 document.getElementById('btn-send').addEventListener('click', () => this.sendMessage());
                 document.getElementById('message-input').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        e.target.blur();
-                        this.sendMessage();
-                    }
+                    if (e.key === 'Enter') { e.target.blur(); this.sendMessage(); }
                 });
                 document.getElementById('btn-privacy').addEventListener('click', () => {
                     this.isPrivate = !this.isPrivate;
@@ -328,53 +304,84 @@
                 });
             },
 
-            // --- FUNÇÃO DO TOAST DE SUCESSO ---
-            showToast(message) {
+            showToast(message, type = 'success') {
                 const toast = document.getElementById('toast-notification');
+                const icon = document.getElementById('toast-icon');
                 document.getElementById('toast-message').textContent = message;
                 
-                // Mostrar o toast
-                toast.classList.remove('opacity-0', 'translate-y-[-20px]');
-                toast.classList.add('opacity-100', 'translate-y-0');
+                if (type === 'info') {
+                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-blue-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-blue-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]';
+                    icon.className = 'fas fa-info-circle mr-2 text-lg';
+                } else if(type === 'error') {
+                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-red-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-red-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]';
+                    icon.className = 'fas fa-exclamation-triangle mr-2 text-lg';
+                } else {
+                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-emerald-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-emerald-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]';
+                    icon.className = 'fas fa-check-circle mr-2 text-lg';
+                }
+
+                setTimeout(() => {
+                    toast.classList.remove('opacity-0', 'translate-y-[-20px]');
+                    toast.classList.add('opacity-100', 'translate-y-0');
+                }, 10);
                 
-                // Limpar timeout antigo se existir
                 if(this.toastTimeout) clearTimeout(this.toastTimeout);
-                
-                // Esconder depois de 3 segundos
                 this.toastTimeout = setTimeout(() => {
                     toast.classList.remove('opacity-100', 'translate-y-0');
                     toast.classList.add('opacity-0', 'translate-y-[-20px]');
-                }, 3000);
+                }, 3500);
             },
 
-            // --- CONTROLE DE ABAS E FLUXO ---
             switchTab(mode) {
                 this.currentMode = mode;
                 
-                document.getElementById('tab-explore').classList.toggle('active', mode === 'explore');
-                document.getElementById('tab-study').classList.toggle('active', mode === 'study');
+                ['explore', 'study', 'profile'].forEach(m => {
+                    document.getElementById(`tab-${m}`)?.classList.toggle('active', mode === m);
+                    document.getElementById(`view-${m}`)?.classList.toggle('hidden-app', mode !== m);
+                });
 
-                document.getElementById('view-explore').classList.toggle('hidden-app', mode !== 'explore');
                 document.getElementById('footer-explore').classList.toggle('hidden-app', mode !== 'explore');
-                
-                document.getElementById('view-study').classList.toggle('hidden-app', mode !== 'study');
                 document.getElementById('footer-study').classList.toggle('hidden-app', mode !== 'study');
 
                 if (mode === 'explore') {
                     this.loadExplorePath(this.currentNodeId);
                 } else if (mode === 'study') {
                     this.startStudySession();
+                } else if (mode === 'profile') {
+                    this.loadProfile();
                 }
             },
 
             goHome() {
+                this.isDeriving = false;
+                this.derivationBaseId = null;
                 this.loadExplorePath(null);
             },
 
-            // Nova função para encerrar a linha atual sem excluir do banco (pois já é auto-save)
-            finishChat() {
-                this.goHome(); // Reseta para o estado "Novo Ponto de Partida"
-                this.showToast("Chat finalizado e consolidado nos Estudos!");
+            // --- LÓGICA RÍGIDA DE CRIAÇÃO ---
+            async finishChat() {
+                if (!this.currentNodeId) {
+                    this.goHome();
+                    return;
+                }
+
+                // O NOVO CHAT SÓ É CRIADO SE ELE ADICIONAR ALGO (Atende ao seu requisito)
+                if (this.isDeriving && this.currentNodeId === this.derivationBaseId) {
+                    this.showToast("Adicione uma nova mensagem para criar o chat derivado.", "error");
+                    return;
+                }
+
+                // Registra O NOVO leaf node (que representa o chat 100% novo) nos estudos.
+                const res = await Api.fetch('add_to_study', { node_id: this.currentNodeId }, 'POST');
+
+                if (res.status === 'success') {
+                    this.showToast("Novo Chat consolidado com sucesso!");
+                } else if (res.message === 'Chat já está nos seus estudos.') {
+                    this.showToast("Caminho atualizado.", "info");
+                }
+
+                this.checkStudyQueue(); 
+                this.goHome(); // Limpa a tela
             },
 
             async loadExplorePath(nodeId) {
@@ -406,16 +413,11 @@
 
                 if (res.status === 'success') {
                     input.value = '';
-                    this.loadExplorePath(res.id);
-                    
-                    // Exibe o balão verde informando que foi salvo
-                    this.showToast("Salvo nos Estudos");
-                    
-                    // Atualiza o contador de estudos na aba
-                    this.checkStudyQueue();
+                    this.loadExplorePath(res.id); 
                 }
             },
 
+            // --- A MÁGICA VISUAL DO DERIVAR FICA AQUI ---
             renderExplore() {
                 const container = document.getElementById('view-explore');
                 container.innerHTML = '';
@@ -425,11 +427,47 @@
                         <div class="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-500 text-center animate-fade-in mt-10">
                             <i class="fas fa-seedling text-5xl mb-4 text-blue-500/40"></i>
                             <h2 class="text-xl font-bold text-slate-300 mb-2">Novo Ponto de Partida</h2>
-                            <p class="text-sm max-w-[250px] mx-auto mb-4">Insira uma afirmação ou pergunta base para começar um novo ciclo.</p>
+                            <p class="text-sm max-w-[250px] mx-auto mb-4">Insira uma afirmação ou pergunta base para iniciar uma nova árvore de conhecimento.</p>
                         </div>`;
                 } else {
-                    this.chatPath.forEach(node => { container.innerHTML += this.createMessageHTML(node); });
-                    // Adiciona um espaçamento no final para não ficar grudado no input
+                    let baseHtml = '';
+                    let newHtml = '';
+
+                    // SE ESTIVER DERIVANDO: Encaixota o histórico antigo para provar que foi copiado
+                    if (this.isDeriving && this.derivationBaseId) {
+                        let reachedBase = false;
+                        this.chatPath.forEach(node => {
+                            if (!reachedBase) {
+                                baseHtml += this.createMessageHTML(node, true);
+                                if (node.id == this.derivationBaseId) reachedBase = true;
+                            } else {
+                                newHtml += this.createMessageHTML(node, false);
+                            }
+                        });
+
+                        container.innerHTML += `
+                            <div class="relative bg-slate-800/60 border-2 border-dashed border-slate-700/80 p-3 pt-7 rounded-2xl mb-8 mt-5 shadow-inner">
+                                <div class="absolute -top-3.5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full shadow border border-blue-500 font-bold uppercase tracking-widest flex items-center gap-1 whitespace-nowrap">
+                                    <i class="fas fa-copy"></i> Cópia do Ponto de Partida
+                                </div>
+                                ${baseHtml}
+                            </div>
+                        `;
+
+                        if (newHtml) {
+                            container.innerHTML += newHtml;
+                        } else {
+                            container.innerHTML += `
+                                <div class="text-center text-xs text-blue-400 font-bold uppercase tracking-wider my-6 flex flex-col items-center justify-center gap-2 animate-pulse">
+                                    <i class="fas fa-arrow-down text-lg"></i> Adicione as mensagens do NOVO CHAT abaixo
+                                </div>
+                            `;
+                        }
+                    } else {
+                        // Fluxo normal (novo chat do zero)
+                        this.chatPath.forEach(node => { container.innerHTML += this.createMessageHTML(node); });
+                    }
+                    
                     container.innerHTML += `<div class="h-6"></div>`;
                 }
 
@@ -447,7 +485,6 @@
                     speakerInd.className = 'font-bold text-slate-400 text-xs bg-slate-700/50 px-2 py-1 rounded';
                 }
 
-                // Lógica de exibição da barra de contexto e botão de finalizar chat
                 if (this.currentNodeId === null) {
                     ctxInd.classList.add('hidden-app');
                     ctxInd.classList.remove('flex');
@@ -457,6 +494,53 @@
                 }
 
                 setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
+            },
+
+            // --- PERFIL: PARA O USUÁRIO VER QUE O CHAT ANTIGO AINDA EXISTE INTACTO ---
+            async loadProfile() {
+                const container = document.getElementById('view-profile');
+                container.innerHTML = '<div class="text-center text-slate-400 mt-10"><i class="fas fa-spinner fa-spin text-3xl"></i> Buscando seus chats...</div>';
+
+                const res = await Api.fetch('get_my_chats');
+                if (res.status === 'success') {
+                    if (res.chats.length === 0) {
+                        container.innerHTML = `
+                            <div class="flex flex-col items-center justify-center mt-10 text-slate-500">
+                                <i class="fas fa-folder-open text-5xl mb-4 text-blue-500/30"></i>
+                                <p>Você ainda não tem chats consolidados.</p>
+                            </div>`;
+                        return;
+                    }
+
+                    let html = `<h2 class="text-lg font-bold text-white mb-6 flex items-center"><i class="fas fa-layer-group text-blue-400 mr-2"></i> Meus Chats Independentes (${res.chats.length})</h2>`;
+                    
+                    res.chats.forEach(chat => {
+                        const date = new Date(chat.created_at).toLocaleDateString('pt-BR');
+                        html += `
+                            <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-sm mb-4 cursor-pointer hover:bg-slate-700/80 transition flex flex-col gap-2 relative overflow-hidden group" onclick="app.viewChatFromProfile(${chat.node_id})">
+                                <div class="absolute right-0 top-0 h-full w-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition"></div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-blue-400 uppercase tracking-wider"><i class="fas fa-route mr-1"></i> Final no Nó #${chat.node_id}</span>
+                                    <span class="text-[10px] text-slate-400 bg-slate-900 px-2 py-1 rounded border border-slate-700"><i class="far fa-calendar-alt mr-1"></i> ${date}</span>
+                                </div>
+                                <p class="text-slate-300 text-sm line-clamp-2 leading-relaxed italic border-l-2 border-slate-600 pl-3 my-1">"... ${chat.content} ..."</p>
+                                <div class="flex justify-between items-center mt-2 border-t border-slate-700 pt-3">
+                                    <span class="text-[10px] text-emerald-400 font-semibold bg-emerald-900/30 px-2 py-1 rounded"><i class="fas fa-brain"></i> Revisões feitas: ${chat.repetitions}</span>
+                                    <span class="text-xs text-blue-300 font-semibold group-hover:underline">Ler chat completo <i class="fas fa-arrow-right ml-1"></i></span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                }
+            },
+
+            viewChatFromProfile(nodeId) {
+                // Apenas visualiza (não é modo derivação)
+                this.isDeriving = false;
+                this.derivationBaseId = null;
+                this.switchTab('explore');
+                this.loadExplorePath(nodeId);
             },
 
             // --- MODO: ESTUDO (Repetição Espaçada) ---
@@ -484,14 +568,13 @@
                     container.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-500 text-center mt-10">
                             <i class="fas fa-glass-cheers text-5xl mb-4 text-emerald-500/40"></i>
-                            <h2 class="text-xl font-bold text-slate-300 mb-2">Sua mente está limpa!</h2>
-                            <p class="text-sm max-w-[250px] mx-auto">Você não tem chats pendentes de revisão hoje.</p>
+                            <h2 class="text-xl font-bold text-slate-300 mb-2">Sua mente está afiada!</h2>
+                            <p class="text-sm max-w-[250px] mx-auto">Você revisou todos os raciocínios programados para hoje.</p>
                         </div>`;
                     return;
                 }
 
                 footer.classList.remove('hidden-app');
-                
                 const item = this.studyQueue[0];
                 this.currentStudyNode = item.node_id;
 
@@ -505,10 +588,7 @@
                     </div>
                 `;
 
-                path.forEach(node => {
-                    container.innerHTML += this.createMessageHTML(node);
-                });
-
+                path.forEach(node => { container.innerHTML += this.createMessageHTML(node); });
                 setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
             },
 
@@ -516,10 +596,7 @@
                 if (!this.currentStudyNode) return;
                 document.getElementById('footer-study').classList.add('hidden-app');
                 
-                const res = await Api.fetch('submit_review', {
-                    node_id: this.currentStudyNode,
-                    quality: 4 
-                }, 'POST');
+                const res = await Api.fetch('submit_review', { node_id: this.currentStudyNode, quality: 4 }, 'POST');
 
                 if (res.status === 'success') {
                     this.studyQueue.shift(); 
@@ -535,30 +612,38 @@
                 const targetNode = this.currentStudyNode;
                 document.getElementById('footer-study').classList.add('hidden-app');
                 
-                await Api.fetch('submit_review', {
-                    node_id: targetNode,
-                    quality: 4 
-                }, 'POST');
-                
+                // 1. Marca este chat atual como lido
+                await Api.fetch('submit_review', { node_id: targetNode, quality: 4 }, 'POST');
                 this.studyQueue.shift();
+                
+                // 2. Transfere a base para a tela de Criação (Derivação)
+                this.isDeriving = true;
+                this.derivationBaseId = targetNode; // Guardamos o ponto de quebra!
+                
                 this.switchTab('explore');
                 this.loadExplorePath(targetNode);
+                
+                this.showToast("Histórico copiado! Adicione novas mensagens.", "info");
             },
 
-            // --- UTILITÁRIOS UI ---
-            createMessageHTML(node) {
+            // --- ESTILIZAÇÃO DINÂMICA (BASE vs NOVO) ---
+            createMessageHTML(node, isBase = false) {
                 const isPerson1 = node.speaker === 1;
                 const alignClass = isPerson1 ? 'justify-end' : 'justify-start';
+                
+                // Mensagens que vieram do histórico (isBase = true) ficam opacas e sem sombra
+                const baseStyles = isBase ? 'opacity-60 scale-[0.98]' : 'shadow-lg border-2 border-transparent';
                 const bubbleClass = isPerson1 ? 'chat-bubble-1 text-white' : 'chat-bubble-2 text-slate-100';
-                const author = isPerson1 ? 'Você (P1)' : 'Interlocutor (P2)';
+                
+                const author = isPerson1 ? 'Personagem 1' : 'Personagem 2'; 
                 
                 return `
                     <div class="flex ${alignClass} mb-4 animate-fade-in">
                         <div class="max-w-[85%] md:max-w-[75%] flex flex-col">
                             <span class="text-[10px] text-slate-500 mb-1 font-semibold uppercase tracking-wider ${isPerson1 ? 'text-right' : 'text-left'}">${author}</span>
-                            <div class="${bubbleClass} p-3.5 md:p-4 shadow-md relative group text-sm md:text-base leading-relaxed break-words">
+                            <div class="${bubbleClass} ${baseStyles} rounded-[1.2rem] ${isPerson1 ? 'rounded-br-[0.3rem]' : 'rounded-bl-[0.3rem]'} p-3.5 md:p-4 relative group text-sm md:text-base leading-relaxed break-words transition-all border ${isBase ? 'border-transparent' : (isPerson1 ? 'border-blue-500' : 'border-slate-500')}">
                                 ${node.content}
-                                <button onclick="Api.generateAudio(${node.id})" class="absolute -bottom-3 ${isPerson1 ? '-left-2' : '-right-2'} bg-slate-700 text-slate-300 w-7 h-7 md:w-8 md:h-8 rounded-full shadow-lg border border-slate-600 hover:text-blue-400 transition flex items-center justify-center opacity-50 hover:opacity-100">
+                                <button onclick="Api.generateAudio(${node.id})" class="absolute -bottom-3 ${isPerson1 ? '-left-2' : '-right-2'} bg-slate-800 text-slate-300 w-7 h-7 md:w-8 md:h-8 rounded-full shadow-lg border border-slate-600 hover:text-blue-400 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
                                     <i class="fas fa-volume-up text-[10px]"></i>
                                 </button>
                             </div>
