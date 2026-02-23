@@ -1,63 +1,65 @@
-Estrutura em que o banco de dados foi criado:
+Estrutura do Banco de Dados: Info Derivadas
 
--- Criação do banco de dados
-CREATE DATABASE IF NOT EXISTS info_derivadas CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE info_derivadas;
+Banco de Dados: info_derivadas
+Charset / Collation: utf8mb4 / utf8mb4_unicode_ci
 
--- 1. Tabela de Usuários
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    encryption_key VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+Esta é a documentação de referência para a estrutura de dados do aplicativo "Info Derivadas", refletindo o sistema central de chat em árvore, criptografia, repetição espaçada e funcionalidades sociais.
 
--- 2. Tabela Central: Nós do Chat (A Árvore de Derivação)
-CREATE TABLE IF NOT EXISTS chat_nodes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    parent_id INT NULL,
-    user_id INT NOT NULL,
-    speaker TINYINT(1) NOT NULL,  -- 1 = Personagem 1 (Pergunta), 2 = Personagem 2 (Resposta)
-    content_encrypted TEXT NOT NULL,
-    image_url VARCHAR(255) NULL,
-    audio_url VARCHAR(255) NULL,
-    is_public BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES chat_nodes(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+1. Tabela de Usuários (users)
 
--- 3. Sistema de Repetição Espaçada (Estudos)
-CREATE TABLE IF NOT EXISTS study_progress (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    node_id INT NOT NULL,
-    repetitions INT DEFAULT 0,    -- Quantas vezes revisou
-    interval_days INT DEFAULT 1,  -- Intervalo até a próxima revisão
-    ease_factor FLOAT DEFAULT 2.5,-- Fator de facilidade (algoritmo SM-2)
-    next_review_date DATETIME NOT NULL,
-    score INT DEFAULT 0,          -- Pontuação atual
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (node_id) REFERENCES chat_nodes(id) ON DELETE CASCADE
-);
+Armazena as credenciais e informações básicas dos usuários. Possui um campo essencial para a segurança dos dados, garantindo que o sistema seja anti-vazamento de informações sensíveis.
 
--- 4. Sistema Social
-CREATE TABLE IF NOT EXISTS subscriptions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    node_id INT NOT NULL, -- Ponto de partida específico
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (node_id) REFERENCES chat_nodes(id) ON DELETE CASCADE
-);
+id (INT) [PK] - Identificador único do usuário (Auto Incremento).
+username (VARCHAR 50) [UNIQUE] - Nome de usuário único escolhido no cadastro.
+email (VARCHAR 100) [UNIQUE] - E-mail para login e contato.
+password_hash (VARCHAR 255) - Hash seguro da senha do usuário.
+encryption_key (VARCHAR 255) - Chave gerada no cadastro para criptografar as mensagens deste usuário ponta a ponta.
+created_at (TIMESTAMP) - Data e hora de criação da conta.
 
-CREATE TABLE IF NOT EXISTS followers (
-    follower_id INT NOT NULL,
-    followed_id INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (follower_id, followed_id),
-    FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (followed_id) REFERENCES users(id) ON DELETE CASCADE
-);
+2. Tabela Central: Nós do Chat (chat_nodes)
+
+Esta é a tabela principal do aplicativo. Ela armazena a "Árvore de Derivação". Cada mensagem é um nó que pode ou não ter originado de outra mensagem.
+
+id (INT) [PK] - Identificador único da mensagem (nó).
+parent_id (INT) [FK] - Qual mensagem originou esta? (Nulo = mensagem inicial/ponto de partida).
+user_id (INT) [FK] - Dono/Criador da mensagem.
+speaker (TINYINT 1) - Define quem fala: 1 = Personagem 1 (Pergunta/Derivação), 2 = Personagem 2 (Resposta).
+content_encrypted (TEXT) - Texto da mensagem, salvo de forma criptografada no banco.
+image_url (VARCHAR 255) - Caminho para arquivo de imagem anexado à mensagem (se houver).
+audio_url (VARCHAR 255) - Caminho para o arquivo de áudio (TTS via fish_audio).
+is_public (BOOLEAN) - Controle de privacidade (Público/Privado).
+created_at (TIMESTAMP) - Data e hora em que a mensagem foi criada.
+
+3. Sistema de Repetição Espaçada (study_progress)
+
+Gerencia o progresso de estudo do usuário com base nas mensagens (chats). Utiliza uma lógica similar ao algoritmo SM-2 para determinar quando o usuário deve revisar um raciocínio.
+
+id (INT) [PK] - Identificador único do registro de progresso.
+user_id (INT) [FK] - O usuário que está estudando.
+node_id (INT) [FK] - O nó (mensagem/tópico) que está sendo estudado.
+repetitions (INT) - Quantas vezes o usuário já revisou este item (Padrão: 0).
+interval_days (INT) - Intervalo de dias até a próxima revisão (Padrão: 1).
+ease_factor (FLOAT) - Fator de facilidade do algoritmo SM-2 (Padrão: 2.5).
+next_review_date (DATETIME) - Data e hora exatas de quando este item deve ser revisado novamente.
+score (INT) - Pontuação atual ou nível de maestria alcançado neste chat.
+
+4. Sistema Social
+
+Permite interações entre os usuários da plataforma, como seguir perfis ou se inscrever em árvores de conhecimento específicas.
+
+4.1 Inscrições em Tópicos (subscriptions)
+
+Quando um usuário se interessa pelo conhecimento gerado a partir de um ponto inicial de outro usuário.
+
+id (INT) [PK] - Identificador único da inscrição.
+user_id (INT) [FK] - O usuário que está se inscrevendo.
+node_id (INT) [FK] - O ponto de partida específico do chat em que o usuário se inscreveu.
+created_at (TIMESTAMP) - Data da inscrição.
+
+4.2 Seguidores (followers)
+Relação de usuários seguindo outros usuários para acompanhar suas derivações e chats públicos.
+follower_id (INT) [PK/FK] - O ID do usuário que está seguindo (Fã).
+followed_id (INT) [PK/FK] - O ID do usuário que está sendo seguido (Criador).
+created_at (TIMESTAMP) - Data em que o vínculo foi criado.
+
+Nota: Na tabela followers, a chave primária é a combinação de follower_id e followed_id, garantindo que um usuário não siga a mesma pessoa duas vezes.
