@@ -11,7 +11,6 @@
         .chat-bubble-1 { background-color: #2563eb; border-radius: 1.2rem 1.2rem 1.2rem 0.3rem; }
         .chat-bubble-2 { background-color: #334155; border-radius: 1.2rem 1.2rem 0.3rem 1.2rem; }
         
-        /* Oculta scrollbar mas permite scroll */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
@@ -28,7 +27,10 @@
             <i class="fas fa-network-wired mr-2"></i> Info Derivadas
         </h1>
         <div class="flex gap-4 text-slate-300">
-            <button class="hover:text-blue-400 transition" title="Modo Estudo"><i class="fas fa-brain text-xl"></i></button>
+            <!-- Botão de modo de estudo (preparando terreno para a próxima feature) -->
+            <button class="hover:text-emerald-400 transition flex items-center gap-1" title="Modo Estudo (Repetição Espaçada)" onclick="alert('Modo de Estudo (SM-2) será implementado em breve!')">
+                <i class="fas fa-brain text-xl"></i>
+            </button>
             <button class="hover:text-blue-400 transition" title="Meu Perfil"><i class="fas fa-user-circle text-xl"></i></button>
         </div>
     </header>
@@ -43,18 +45,12 @@
         <div class="max-w-4xl mx-auto flex flex-col gap-2">
             
             <!-- Context Indicator -->
-            <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 flex justify-between">
+            <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 flex justify-between items-center">
                 <span><i class="fas fa-reply fa-rotate-180 mr-1 text-blue-400"></i> Respondendo ao contexto...</span>
-                <span id="speaker-indicator" class="font-bold text-blue-300">TURNO: PERSONAGEM 1</span>
+                <span id="speaker-indicator" class="font-bold text-blue-300 bg-slate-900 px-2 py-1 rounded">TURNO: PERSONAGEM 1</span>
             </div>
 
-            <!-- Standard Questions Dropdown (Visible only for P1) -->
-            <select id="standard-questions" class="w-full bg-slate-900 text-sm text-slate-300 p-2.5 rounded-xl border border-slate-600 focus:outline-none focus:border-blue-500 mb-1">
-                <option value="">Selecione uma pergunta padrão...</option>
-                <option value="custom">✍️ Escrever pergunta personalizada...</option>
-                <!-- Loaded via JS -->
-            </select>
-
+            <!-- Input Principal -->
             <div class="flex gap-2 items-center">
                 <button title="Anexar Imagem" class="text-slate-400 hover:text-white p-2 rounded-lg transition">
                     <i class="fas fa-image text-xl"></i>
@@ -75,7 +71,7 @@
 
     <script>
         // --- API / BACKEND COMMUNICATION ---
-        // Altere para "false" quando for testar com seu servidor PHP rodando
+        // Altere para "false" quando for usar o PHP real
         const USE_MOCK = true; 
 
         class Api {
@@ -111,15 +107,14 @@
 
         // --- APP STATE & LOGIC ---
         const app = {
-            currentNodeId: null, // Nó final do caminho atual
-            currentSpeaker: 1,   // Próximo a falar (1 = P1/Pergunta, 2 = P2/Resposta)
+            currentNodeId: null, 
+            currentSpeaker: 1,   
             isPrivate: true,
-            chatPath: [],        // Caminho linear renderizado
-            branches: [],        // Opções disponíveis a partir do nó atual
+            chatPath: [],        
+            branches: [],        
 
             init() {
                 this.bindEvents();
-                this.loadStandardQuestions();
                 this.loadPath(null); // Inicia da raiz
             },
 
@@ -135,50 +130,20 @@
                     this.isPrivate = !this.isPrivate;
                     iconPrivacy.className = this.isPrivate ? 'fas fa-lock text-red-400' : 'fas fa-globe text-green-400';
                 });
-
-                const selectObj = document.getElementById('standard-questions');
-                const inputObj = document.getElementById('message-input');
-                selectObj.addEventListener('change', (e) => {
-                    if (e.target.value && e.target.value !== 'custom') {
-                        inputObj.value = e.target.options[e.target.selectedIndex].text;
-                    } else {
-                        inputObj.value = '';
-                        inputObj.focus();
-                    }
-                });
-            },
-
-            async loadStandardQuestions() {
-                // Mock default questions
-                const questions = [
-                    { id: 1, question_text: "Quais as exceções para essa regra?" },
-                    { id: 2, question_text: "Pode me dar um exemplo prático?" },
-                    { id: 3, question_text: "Como isso se aplica na vida real?" }
-                ];
-                
-                const select = document.getElementById('standard-questions');
-                questions.forEach(q => {
-                    const opt = document.createElement('option');
-                    opt.value = q.id;
-                    opt.text = q.question_text;
-                    select.appendChild(opt);
-                });
             },
 
             async loadPath(nodeId) {
-                // Se nodeId for null, carrega a "Raiz" (Pontos de partida)
                 this.currentNodeId = nodeId;
                 
                 if (nodeId) {
                     const res = await Api.fetch('get_chat_path', { node_id: nodeId });
                     this.chatPath = res.path || [];
                     
-                    // Atualiza o speaker baseado no último nó do caminho
                     const lastNode = this.chatPath[this.chatPath.length - 1];
                     this.currentSpeaker = lastNode.speaker === 1 ? 2 : 1;
                 } else {
                     this.chatPath = [];
-                    this.currentSpeaker = 1; // Raiz começa com P1 perguntando
+                    this.currentSpeaker = 1; 
                 }
 
                 await this.loadBranches();
@@ -204,8 +169,6 @@
 
                 if (res.status === 'success') {
                     input.value = '';
-                    document.getElementById('standard-questions').value = '';
-                    // Carrega o caminho apontando para a nova mensagem
                     this.loadPath(res.id);
                 }
             },
@@ -218,13 +181,13 @@
                 const container = document.getElementById('chat-container');
                 container.innerHTML = '';
 
-                // 1. Renderizar o Caminho Atual (As mensagens de cima pra baixo)
+                // 1. Renderizar o Caminho Atual
                 if (this.chatPath.length === 0) {
                     container.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-full text-slate-500 text-center animate-fade-in">
-                            <i class="fas fa-seedling text-4xl mb-3 text-emerald-500/50"></i>
-                            <p class="text-lg">Comece uma nova linha de raciocínio.</p>
-                            <p class="text-sm">Faça sua primeira pergunta abaixo.</p>
+                            <i class="fas fa-seedling text-4xl mb-3 text-blue-500/50"></i>
+                            <h2 class="text-xl font-bold text-slate-300 mb-2">Inicie uma nova linha de raciocínio</h2>
+                            <p class="text-sm max-w-xs mx-auto">Faça uma afirmação inicial ou uma pergunta base. A partir dela, o conhecimento irá derivar.</p>
                         </div>`;
                 } else {
                     this.chatPath.forEach(node => {
@@ -232,9 +195,9 @@
                     });
                 }
 
-                // 2. Renderizar Derivações (Opções de clique, se houver)
+                // 2. Renderizar Derivações
                 if (this.branches.length > 0) {
-                    let branchTypeLabel = this.currentSpeaker === 1 ? "Perguntas derivadas disponíveis:" : "Respostas possíveis a partir daqui:";
+                    let branchTypeLabel = this.currentSpeaker === 1 ? "Perguntas/Derivações a partir daqui:" : "Respostas/Explicações possíveis:";
                     let branchesHtml = `
                         <div class="mt-8 pt-4 border-t border-slate-700/50 animate-fade-in pl-4 border-l-2 border-l-blue-500/30 ml-2">
                             <span class="text-xs text-slate-400 uppercase font-bold tracking-wider block mb-3">
@@ -255,21 +218,18 @@
                 }
 
                 // 3. Atualizar UI de Input
-                const selectStandard = document.getElementById('standard-questions');
                 const inputObj = document.getElementById('message-input');
                 const speakerInd = document.getElementById('speaker-indicator');
                 const ctxInd = document.getElementById('context-indicator');
 
                 if (this.currentSpeaker === 1) {
-                    inputObj.placeholder = "Faça uma nova pergunta...";
-                    selectStandard.style.display = 'block';
+                    inputObj.placeholder = "Derive uma nova pergunta ou raciocínio...";
                     speakerInd.innerHTML = '<i class="fas fa-user mr-1"></i> VOCÊ (P1)';
-                    speakerInd.className = 'font-bold text-blue-400 text-xs';
+                    speakerInd.className = 'font-bold text-blue-400 text-xs bg-blue-900/30 px-2 py-1 rounded';
                 } else {
-                    inputObj.placeholder = "Dê uma resposta...";
-                    selectStandard.style.display = 'none';
+                    inputObj.placeholder = "Dê uma resposta ou explicação...";
                     speakerInd.innerHTML = 'INTERLOCUTOR (P2) <i class="fas fa-robot ml-1"></i>';
-                    speakerInd.className = 'font-bold text-slate-400 text-xs';
+                    speakerInd.className = 'font-bold text-slate-400 text-xs bg-slate-700/50 px-2 py-1 rounded';
                 }
 
                 if(this.currentNodeId === null) {
@@ -278,7 +238,6 @@
                     ctxInd.style.visibility = 'visible';
                 }
 
-                // Scroll to bottom
                 setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
             },
 
@@ -305,20 +264,20 @@
             }
         };
 
-        // --- MOCK BACKEND PARA TESTE IMEDIATO (SÓ NO NAVEGADOR) ---
+        // --- MOCK BACKEND PARA TESTE NO NAVEGADOR ---
         const MockBackend = {
             db: [
                 {id: 1, parent_id: null, speaker: 1, content: "O que é React?"},
                 {id: 2, parent_id: 1, speaker: 2, content: "É uma biblioteca JavaScript para construção de interfaces."},
-                {id: 3, parent_id: 2, speaker: 1, content: "Como isso se aplica na vida real?"},
-                {id: 4, parent_id: 3, speaker: 2, content: "Você usa para criar SPAs, como o Instagram ou o Netflix web."},
-                {id: 5, parent_id: 2, speaker: 1, content: "Quais as exceções para essa regra?"},
-                {id: 6, parent_id: 5, speaker: 2, content: "Não é uma regra, mas não é ideal para sites muito simples estáticos."}
+                {id: 3, parent_id: 2, speaker: 1, content: "Como eu crio um componente nele?"}, // Orgânico, não padrão
+                {id: 4, parent_id: 3, speaker: 2, content: "Você cria uma função JavaScript que retorna JSX."},
+                {id: 5, parent_id: 2, speaker: 1, content: "Ele é melhor que o Angular?"}, // Orgânico
+                {id: 6, parent_id: 5, speaker: 2, content: "Depende do caso de uso. React é focado apenas na view."}
             ],
             nextId: 7,
             
             async handle(action, params, method) {
-                await new Promise(r => setTimeout(r, 200)); // simula rede
+                await new Promise(r => setTimeout(r, 200));
                 if(action === 'add_node') {
                     const node = { id: this.nextId++, parent_id: params.parent_id, speaker: params.speaker, content: params.content };
                     this.db.push(node);
@@ -340,9 +299,7 @@
             }
         };
 
-        // Initialize App
         window.addEventListener('DOMContentLoaded', () => app.init());
-
     </script>
 </body>
 </html>
