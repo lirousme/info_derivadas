@@ -83,18 +83,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Insere com valores padrão. Revisão imediata (NOW())
-        $stmt = $pdo->prepare("INSERT INTO study_progress (user_id, node_id, repetitions, interval_days, ease_factor, next_review_date, score) VALUES (?, ?, 0, 1, 2.5, NOW(), 0)");
+        // Insere com valores padrão. interval_minutes = 1. Revisão imediata (NOW())
+        $stmt = $pdo->prepare("INSERT INTO study_progress (user_id, node_id, repetitions, interval_minutes, ease_factor, next_review_date, score) VALUES (?, ?, 0, 1, 2.5, NOW(), 0)");
         $stmt->execute([$current_user_id, $node_id]);
         
         echo json_encode(['status' => 'success']);
         exit;
     }
 
-    // SUBMETER REVISÃO DE ESTUDO (ALGORITMO SM-2)
+    // SUBMETER REVISÃO DE ESTUDO (ALGORITMO SM-2 EM MINUTOS)
     if ($action === 'submit_review') {
         $node_id = $data['node_id'];
-        $quality = (int)$data['quality']; // 0 a 5 (Vamos usar 3=Difícil, 4=Bom, 5=Fácil)
+        $quality = (int)$data['quality']; // 0 a 5 (Usamos 3=Difícil, 4=Bom, 5=Fácil)
 
         $stmt = $pdo->prepare("SELECT * FROM study_progress WHERE user_id = ? AND node_id = ?");
         $stmt->execute([$current_user_id, $node_id]);
@@ -106,20 +106,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $repetitions = (int)$progress['repetitions'];
-        $interval = (int)$progress['interval_days'];
+        // Puxamos os minutos salvos na base
+        $interval = (int)$progress['interval_minutes']; 
         $ease = (float)$progress['ease_factor'];
 
         if ($quality < 3) {
-            // Se errou/esqueceu totalmente
+            // Se errou/esqueceu totalmente, volta pro zero (1 minuto)
             $repetitions = 0;
-            $interval = 1;
+            $interval = 1; 
         } else {
             // Acertou/Lembrou
             if ($repetitions === 0) {
-                $interval = 1;
+                $interval = 1; // 1 minuto
             } elseif ($repetitions === 1) {
-                $interval = 6;
+                $interval = 5; // 5 minutos (Ajustado para o fluxo rápido)
             } else {
+                // Multiplica os minutos pelo fator de facilidade (ex: 5 * 2.5 = 13 minutos)
                 $interval = round($interval * $ease);
             }
             $repetitions++;
@@ -129,10 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ease = $ease + (0.1 - (5 - $quality) * (0.08 + (5 - $quality) * 0.02));
         if ($ease < 1.3) $ease = 1.3;
 
-        // Calcula próxima data
-        $next_review = date('Y-m-d H:i:s', strtotime("+$interval days"));
+        // --- A MÁGICA DOS MINUTOS ACONTECE AQUI ---
+        // Adiciona $interval minutos à hora exata atual
+        $next_review = date('Y-m-d H:i:s', strtotime("+$interval minutes"));
 
-        $stmt = $pdo->prepare("UPDATE study_progress SET repetitions = ?, interval_days = ?, ease_factor = ?, next_review_date = ?, score = score + ? WHERE id = ?");
+        // Atualiza o banco com a nova quantidade de minutos (interval_minutes)
+        $stmt = $pdo->prepare("UPDATE study_progress SET repetitions = ?, interval_minutes = ?, ease_factor = ?, next_review_date = ?, score = score + ? WHERE id = ?");
+        
         // Dá pontos apenas se a qualidade for boa
         $pontos = $quality >= 3 ? $quality : 0;
         $stmt->execute([$repetitions, $interval, $ease, $next_review, $pontos, $progress['id']]);
@@ -172,6 +177,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
         echo json_encode(['status' => 'success', 'path' => $path]);
+        exit;
+    }
+
+    // OBTER TODOS OS CHATS CONSOLIDADOS DO USUÁRIO (PERFIL)
+    if ($action === 'get_my_chats') {
+        $stmt = $pdo->prepare("
+            SELECT sp.node_id, sp.repetitions, sp.next_review_date, cn.content_encrypted, cn.created_at 
+            FROM study_progress sp 
+            JOIN chat_nodes cn ON sp.node_id = cn.id 
+            WHERE sp.user_id = ? 
+            ORDER BY cn.created_at DESC
+        ");
+        $stmt->execute([$current_user_id]);
+        $chats = $stmt->fetchAll();
+
+        foreach ($chats as &$chat) {
+            $chat['content'] = decryptMessage($chat['content_encrypted'], $user_encryption_key);
+            unset($chat['content_encrypted']);
+        }
+
+        echo json_encode(['status' => 'success', 'chats' => $chats]);
         exit;
     }
 
