@@ -2,13 +2,11 @@
 <html lang="pt-BR" class="dark">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport-fit=cover é essencial para o iPhone respeitar o Notch e a barra inferior -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Info Derivadas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Variáveis nativas do iOS para áreas seguras */
         :root {
             --sat: env(safe-area-inset-top);
             --sab: env(safe-area-inset-bottom);
@@ -19,11 +17,9 @@
         body { 
             background-color: #0f172a; 
             color: #e2e8f0; 
-            /* Altura dinâmica para resolver o bug da barra do Safari */
             height: 100dvh; 
         }
 
-        /* Paddings seguros para iPhone */
         .pb-safe { padding-bottom: max(var(--sab), 1rem); }
         .pt-safe { padding-top: max(var(--sat), 0.5rem); }
         
@@ -41,14 +37,17 @@
 
         .nav-btn.active { color: #60a5fa; border-bottom: 2px solid #60a5fa; }
 
-        /* Evita que o iOS dê zoom automático ao clicar no input (deve ter no min 16px) */
         input[type="text"], input[type="email"], input[type="password"] {
             font-size: 16px !important;
         }
     </style>
 </head>
-<!-- Estrutura Flex estrita: Header, Main flex-1, Footer -->
 <body class="flex flex-col font-sans overflow-hidden w-full max-w-full">
+
+    <!-- Notificação Flutuante (Toast) -->
+    <div id="toast-notification" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-emerald-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-emerald-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]">
+        <i class="fas fa-check-circle mr-2 text-lg"></i> <span class="font-bold text-sm" id="toast-message">Salvo nos Estudos</span>
+    </div>
 
     <!-- TELA DE LOGIN / CADASTRO -->
     <div id="auth-screen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
@@ -83,7 +82,7 @@
     </div>
     <!-- FIM TELA LOGIN -->
 
-    <!-- Header do App: flex-none garante que não diminua e pt-safe respeita o Notch do iPhone -->
+    <!-- Header do App -->
     <header id="app-header" class="hidden-app flex-none bg-slate-900/80 backdrop-blur-md shadow-md flex flex-col z-20 border-b border-slate-700 pt-safe">
         <div class="p-3 md:p-4 flex justify-between items-center">
             <h1 class="text-base md:text-lg font-bold text-blue-400 flex items-center cursor-pointer" onclick="app.switchTab('explore'); app.goHome();">
@@ -108,23 +107,25 @@
         </div>
     </header>
 
-    <!-- VIEWS PRINCIPAIS: flex-1 força a rolar apenas esta parte (removido o pb-32) -->
-    
-    <!-- View 1: CRIAÇÃO / EXPLORAÇÃO -->
+    <!-- VIEWS PRINCIPAIS -->
     <main id="view-explore" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
-
-    <!-- View 2: ESTUDO (Repetição Espaçada) -->
     <main id="view-study" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
 
-    <!-- FOOTERS: Não usar absolute! Usar flex-none e pb-safe -->
-    
-    <!-- Footer: CRIAÇÃO -->
+    <!-- FOOTERS -->
     <footer id="footer-explore" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto flex flex-col gap-2">
-            <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 flex justify-between items-center">
-                <span><i class="fas fa-reply fa-rotate-180 mr-1 text-blue-400"></i> Respondendo ao contexto...</span>
-                <span id="speaker-indicator" class="font-bold text-blue-300 bg-slate-900 px-2 py-1 rounded truncate ml-2 max-w-[150px] text-right">T: P1</span>
+            <!-- Indicador de contexto e Botão de Finalizar Chat -->
+            <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 hidden-app justify-between items-center">
+                <span class="flex items-center"><i class="fas fa-reply fa-rotate-180 mr-1 text-blue-400"></i> Respondendo...</span>
+                
+                <div class="flex items-center gap-3">
+                    <button id="btn-finish-chat" onclick="app.finishChat()" class="bg-red-500/10 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                        <i class="fas fa-flag-checkered"></i> Finalizar chat
+                    </button>
+                    <span id="speaker-indicator" class="font-bold text-blue-300 bg-slate-900 px-2 py-1 rounded truncate max-w-[150px] text-right">T: P1</span>
+                </div>
             </div>
+            
             <div class="flex gap-2 items-center">
                 <button title="Privacidade" class="text-slate-400 hover:text-white p-2 rounded-lg transition shrink-0" id="btn-privacy">
                     <i class="fas fa-lock text-red-400 text-lg" id="icon-privacy"></i>
@@ -138,7 +139,6 @@
         </div>
     </footer>
 
-    <!-- Footer: ESTUDO -->
     <footer id="footer-study" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto text-center flex flex-col gap-3">
             <p class="text-sm text-slate-300 font-semibold">Leitura concluída? Escolha o próximo passo:</p>
@@ -298,6 +298,7 @@
             // Variáveis do Modo Estudo
             studyQueue: [],
             currentStudyNode: null,
+            toastTimeout: null,
 
             init() {
                 this.bindEvents();
@@ -317,7 +318,6 @@
                 document.getElementById('btn-send').addEventListener('click', () => this.sendMessage());
                 document.getElementById('message-input').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        // Fecha o teclado mobile no enter
                         e.target.blur();
                         this.sendMessage();
                     }
@@ -328,15 +328,32 @@
                 });
             },
 
-            // --- CONTROLE DE ABAS ---
+            // --- FUNÇÃO DO TOAST DE SUCESSO ---
+            showToast(message) {
+                const toast = document.getElementById('toast-notification');
+                document.getElementById('toast-message').textContent = message;
+                
+                // Mostrar o toast
+                toast.classList.remove('opacity-0', 'translate-y-[-20px]');
+                toast.classList.add('opacity-100', 'translate-y-0');
+                
+                // Limpar timeout antigo se existir
+                if(this.toastTimeout) clearTimeout(this.toastTimeout);
+                
+                // Esconder depois de 3 segundos
+                this.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('opacity-100', 'translate-y-0');
+                    toast.classList.add('opacity-0', 'translate-y-[-20px]');
+                }, 3000);
+            },
+
+            // --- CONTROLE DE ABAS E FLUXO ---
             switchTab(mode) {
                 this.currentMode = mode;
                 
-                // Update UI Headers
                 document.getElementById('tab-explore').classList.toggle('active', mode === 'explore');
                 document.getElementById('tab-study').classList.toggle('active', mode === 'study');
 
-                // Toggle Views
                 document.getElementById('view-explore').classList.toggle('hidden-app', mode !== 'explore');
                 document.getElementById('footer-explore').classList.toggle('hidden-app', mode !== 'explore');
                 
@@ -350,9 +367,14 @@
                 }
             },
 
-            // --- MODO: CRIAÇÃO & DERIVAÇÃO ---
             goHome() {
                 this.loadExplorePath(null);
+            },
+
+            // Nova função para encerrar a linha atual sem excluir do banco (pois já é auto-save)
+            finishChat() {
+                this.goHome(); // Reseta para o estado "Novo Ponto de Partida"
+                this.showToast("Chat finalizado e consolidado nos Estudos!");
             },
 
             async loadExplorePath(nodeId) {
@@ -385,34 +407,12 @@
                 if (res.status === 'success') {
                     input.value = '';
                     this.loadExplorePath(res.id);
-                }
-            },
-
-            async addToStudy(nodeId) {
-                const btn = document.getElementById(`btn-study-${nodeId}`);
-                if(btn) {
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';
-                }
-
-                const res = await Api.fetch('add_to_study', { node_id: nodeId }, 'POST');
-                
-                if (res.status === 'success') {
+                    
+                    // Exibe o balão verde informando que foi salvo
+                    this.showToast("Salvo nos Estudos");
+                    
+                    // Atualiza o contador de estudos na aba
                     this.checkStudyQueue();
-                    if(btn) {
-                        btn.innerHTML = '<i class="fas fa-check mr-2"></i> Salvo nos Estudos';
-                        btn.classList.replace('text-blue-300', 'text-emerald-400');
-                        btn.classList.replace('bg-blue-600/20', 'bg-emerald-600/20');
-                        btn.classList.replace('border-blue-500/50', 'border-emerald-500/50');
-                        btn.disabled = true;
-                    }
-                } else {
-                    if(btn) {
-                        btn.innerHTML = '<i class="fas fa-info-circle mr-2"></i> Já salvo nos Estudos';
-                        btn.classList.replace('text-blue-300', 'text-slate-400');
-                        btn.classList.replace('bg-blue-600/20', 'bg-slate-700');
-                        btn.classList.replace('border-blue-500/50', 'border-slate-600');
-                        btn.disabled = true;
-                    }
                 }
             },
 
@@ -420,7 +420,6 @@
                 const container = document.getElementById('view-explore');
                 container.innerHTML = '';
 
-                // Render Caminho do Chat Atual
                 if (this.chatPath.length === 0) {
                     container.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-500 text-center animate-fade-in mt-10">
@@ -430,19 +429,10 @@
                         </div>`;
                 } else {
                     this.chatPath.forEach(node => { container.innerHTML += this.createMessageHTML(node); });
-                    
-                    if (this.currentNodeId) {
-                        container.innerHTML += `
-                            <div class="flex flex-col items-center mt-6 mb-8">
-                                <button id="btn-study-${this.currentNodeId}" onclick="app.addToStudy(${this.currentNodeId})" class="text-sm bg-blue-600/20 border border-blue-500/50 text-blue-300 px-4 md:px-6 py-3 rounded-xl hover:bg-blue-600/40 transition font-bold shadow-[0_0_15px_rgba(59,130,246,0.15)] flex items-center">
-                                    <i class="fas fa-save mr-2"></i> Salvar este Chat para Estudo
-                                </button>
-                            </div>
-                        `;
-                    }
+                    // Adiciona um espaçamento no final para não ficar grudado no input
+                    container.innerHTML += `<div class="h-6"></div>`;
                 }
 
-                // UI Inputs
                 const inputObj = document.getElementById('message-input');
                 const speakerInd = document.getElementById('speaker-indicator');
                 const ctxInd = document.getElementById('context-indicator');
@@ -457,7 +447,15 @@
                     speakerInd.className = 'font-bold text-slate-400 text-xs bg-slate-700/50 px-2 py-1 rounded';
                 }
 
-                ctxInd.style.visibility = this.currentNodeId === null ? 'hidden' : 'visible';
+                // Lógica de exibição da barra de contexto e botão de finalizar chat
+                if (this.currentNodeId === null) {
+                    ctxInd.classList.add('hidden-app');
+                    ctxInd.classList.remove('flex');
+                } else {
+                    ctxInd.classList.remove('hidden-app');
+                    ctxInd.classList.add('flex');
+                }
+
                 setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
             },
 
