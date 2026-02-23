@@ -11,3 +11,5 @@ Ou pode ter um chat assim: "O que é morango?", "Morango é uma fruta.", "Qual a
 É como se um grupo de mensagens iniciais pudessem terminar de formas diferentes, então temos vários chats que começam com as mesmas mensagens, mas terminam com mensagens diferentes.
 
 Na ciência da computação, chamamos isso de estrutura de árvore (Tree) ou Grafos Direcionados. É um conceito parecido com as "ramificações" (branches) do Git, onde um histórico de mensagens forma um "tronco" base, e a partir de qualquer ponto (mensagem), podemos criar um novo "galho" com um desfecho completamente diferente.
+
+Existem grupos/diretórios de grupos/diretórios onde diretórios/grupos ficam dentro de outro, e tem grupos de chats.
