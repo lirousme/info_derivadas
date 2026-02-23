@@ -1,56 +1,72 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Info Derivadas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #0f172a; color: #e2e8f0; }
-        .chat-bubble-1 { background-color: #3b82f6; border-radius: 1rem 1rem 1rem 0; }
-        .chat-bubble-2 { background-color: #475569; border-radius: 1rem 1rem 0 1rem; }
-        .branch-line { border-left: 2px dashed #475569; margin-left: 1rem; padding-left: 1rem; }
+        .chat-bubble-1 { background-color: #2563eb; border-radius: 1.2rem 1.2rem 1.2rem 0.3rem; }
+        .chat-bubble-2 { background-color: #334155; border-radius: 1.2rem 1.2rem 0.3rem 1.2rem; }
+        
+        /* Oculta scrollbar mas permite scroll */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        
+        .branch-item { transition: all 0.2s; }
+        .branch-item:active { transform: scale(0.98); }
     </style>
 </head>
-<body class="flex flex-col h-screen font-sans">
+<body class="flex flex-col h-screen font-sans overflow-hidden">
 
     <!-- Header -->
-    <header class="bg-slate-800 p-4 shadow-md flex justify-between items-center z-10">
-        <h1 class="text-xl font-bold text-blue-400"><i class="fas fa-network-wired mr-2"></i> Info Derivadas</h1>
-        <div class="flex gap-4">
-            <button class="text-slate-300 hover:text-white"><i class="fas fa-book-open"></i> Estudar</button>
-            <button class="text-slate-300 hover:text-white"><i class="fas fa-user-circle text-xl"></i></button>
+    <header class="bg-slate-900/80 backdrop-blur-md p-4 shadow-md flex justify-between items-center z-20 border-b border-slate-700">
+        <h1 class="text-lg font-bold text-blue-400 flex items-center cursor-pointer" onclick="app.goHome()">
+            <i class="fas fa-network-wired mr-2"></i> Info Derivadas
+        </h1>
+        <div class="flex gap-4 text-slate-300">
+            <button class="hover:text-blue-400 transition" title="Modo Estudo"><i class="fas fa-brain text-xl"></i></button>
+            <button class="hover:text-blue-400 transition" title="Meu Perfil"><i class="fas fa-user-circle text-xl"></i></button>
         </div>
     </header>
 
-    <!-- Chat Area -->
-    <main class="flex-1 overflow-y-auto p-4 space-y-6" id="chat-container">
-        <!-- Messages will be injected here by JS -->
+    <!-- Main Chat Area -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-32" id="chat-container">
+        <!-- Messages injected here -->
     </main>
 
     <!-- Controls / Input Area -->
-    <footer class="bg-slate-800 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-        <div id="action-area" class="max-w-3xl mx-auto flex flex-col gap-2">
-            <!-- Padrões Dropdown -->
-            <select id="standard-questions" class="w-full bg-slate-700 text-white p-2 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-400">
+    <footer class="bg-slate-800 border-t border-slate-700 p-3 md:p-4 absolute bottom-0 w-full z-20">
+        <div class="max-w-4xl mx-auto flex flex-col gap-2">
+            
+            <!-- Context Indicator -->
+            <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 flex justify-between">
+                <span><i class="fas fa-reply fa-rotate-180 mr-1 text-blue-400"></i> Respondendo ao contexto...</span>
+                <span id="speaker-indicator" class="font-bold text-blue-300">TURNO: PERSONAGEM 1</span>
+            </div>
+
+            <!-- Standard Questions Dropdown (Visible only for P1) -->
+            <select id="standard-questions" class="w-full bg-slate-900 text-sm text-slate-300 p-2.5 rounded-xl border border-slate-600 focus:outline-none focus:border-blue-500 mb-1">
                 <option value="">Selecione uma pergunta padrão...</option>
-                <option value="O que significa isso?">O que significa isso?</option>
-                <option value="Pode me dar um exemplo?">Pode me dar um exemplo?</option>
-                <option value="Qual a exceção à essa regra?">Qual a exceção à essa regra?</option>
-                <option value="custom">Escrever pergunta personalizada...</option>
+                <option value="custom">✍️ Escrever pergunta personalizada...</option>
+                <!-- Loaded via JS -->
             </select>
 
-            <div class="flex gap-2">
-                <input type="text" id="message-input" placeholder="Digite sua mensagem..." class="flex-1 bg-slate-700 text-white p-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-400">
-                
-                <button title="Anexar Imagem" class="bg-slate-700 p-3 rounded-lg hover:bg-slate-600 transition">
-                    <i class="fas fa-image text-slate-300"></i>
+            <div class="flex gap-2 items-center">
+                <button title="Anexar Imagem" class="text-slate-400 hover:text-white p-2 rounded-lg transition">
+                    <i class="fas fa-image text-xl"></i>
                 </button>
-                <button title="Privacidade" class="bg-slate-700 p-3 rounded-lg hover:bg-slate-600 transition" id="btn-privacy">
+                <button title="Privacidade" class="text-slate-400 hover:text-white p-2 rounded-lg transition" id="btn-privacy">
                     <i class="fas fa-lock text-red-400" id="icon-privacy"></i>
                 </button>
-                <button id="btn-send" class="bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-500 transition">
+                
+                <input type="text" id="message-input" placeholder="Digite sua mensagem..." autocomplete="off"
+                    class="flex-1 bg-slate-900 text-white p-3 md:p-4 rounded-2xl border border-slate-600 focus:outline-none focus:border-blue-500 shadow-inner">
+                
+                <button id="btn-send" class="bg-blue-600 text-white w-12 h-12 md:w-14 md:h-14 rounded-full font-bold hover:bg-blue-500 transition shadow-lg flex items-center justify-center">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
@@ -58,118 +74,274 @@
     </footer>
 
     <script>
-        // Simulação de Estado
-        let currentNodeId = null; // Onde estamos na árvore
-        let currentSpeaker = 1; // 1 = Pergunta, 2 = Resposta
-        let isPrivate = true;
+        // --- API / BACKEND COMMUNICATION ---
+        // Altere para "false" quando for testar com seu servidor PHP rodando
+        const USE_MOCK = true; 
 
-        const chatContainer = document.getElementById('chat-container');
-        const messageInput = document.getElementById('message-input');
-        const btnSend = document.getElementById('btn-send');
-        const selectStandard = document.getElementById('standard-questions');
-        const btnPrivacy = document.getElementById('btn-privacy');
-        const iconPrivacy = document.getElementById('icon-privacy');
+        class Api {
+            static async fetch(action, params = {}, method = 'GET') {
+                if (USE_MOCK) return MockBackend.handle(action, params, method);
 
-        // Toggle Privacidade
-        btnPrivacy.addEventListener('click', () => {
-            isPrivate = !isPrivate;
-            iconPrivacy.className = isPrivate ? 'fas fa-lock text-red-400' : 'fas fa-globe text-green-400';
-        });
-
-        // Selecionar pergunta padrão preenche o input
-        selectStandard.addEventListener('change', (e) => {
-            if(e.target.value !== 'custom' && e.target.value !== '') {
-                messageInput.value = e.target.value;
-            } else {
-                messageInput.value = '';
-                messageInput.focus();
+                const url = new URL('api.php', window.location.href);
+                url.searchParams.append('action', action);
+                
+                if (method === 'GET') {
+                    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+                    const res = await fetch(url);
+                    return res.json();
+                } else {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        body: JSON.stringify(params),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    return res.json();
+                }
             }
-        });
 
-        // Função para adicionar balão no HTML
-        function appendMessage(text, speaker, nodeId) {
-            const isPerson1 = speaker === 1;
-            const alignClass = isPerson1 ? 'justify-end' : 'justify-start';
-            const bubbleClass = isPerson1 ? 'chat-bubble-1 text-white' : 'chat-bubble-2 text-slate-100';
-            const author = isPerson1 ? 'Você (P1)' : 'Interlocutor (P2)';
+            static async generateAudio(nodeId) {
+                if (USE_MOCK) {
+                    alert(`Gerando áudio (Mock) para o nó ${nodeId}...`);
+                    return { status: 'ok' };
+                }
+                const res = await fetch(`fish_audio.php?id=${nodeId}`);
+                return res.json();
+            }
+        }
 
-            const msgHtml = `
-                <div class="flex ${alignClass} mb-4 animate-fade-in" data-node-id="${nodeId}">
-                    <div class="max-w-[85%] flex flex-col">
-                        <span class="text-xs text-slate-400 mb-1 ${isPerson1 ? 'text-right' : 'text-left'}">${author}</span>
-                        <div class="${bubbleClass} p-4 shadow-lg relative group">
-                            <p class="text-sm md:text-base leading-relaxed">${text}</p>
-                            
-                            <!-- Ações da mensagem (Áudio, Ramificar) -->
-                            <div class="absolute top-2 ${isPerson1 ? '-left-12' : '-right-12'} opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-                                <button title="Ouvir Áudio" onclick="playAudio(${nodeId})" class="bg-slate-700 p-2 rounded-full text-xs hover:bg-slate-600">
-                                    <i class="fas fa-volume-up text-blue-300"></i>
+        // --- APP STATE & LOGIC ---
+        const app = {
+            currentNodeId: null, // Nó final do caminho atual
+            currentSpeaker: 1,   // Próximo a falar (1 = P1/Pergunta, 2 = P2/Resposta)
+            isPrivate: true,
+            chatPath: [],        // Caminho linear renderizado
+            branches: [],        // Opções disponíveis a partir do nó atual
+
+            init() {
+                this.bindEvents();
+                this.loadStandardQuestions();
+                this.loadPath(null); // Inicia da raiz
+            },
+
+            bindEvents() {
+                document.getElementById('btn-send').addEventListener('click', () => this.sendMessage());
+                document.getElementById('message-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+                
+                const btnPrivacy = document.getElementById('btn-privacy');
+                const iconPrivacy = document.getElementById('icon-privacy');
+                btnPrivacy.addEventListener('click', () => {
+                    this.isPrivate = !this.isPrivate;
+                    iconPrivacy.className = this.isPrivate ? 'fas fa-lock text-red-400' : 'fas fa-globe text-green-400';
+                });
+
+                const selectObj = document.getElementById('standard-questions');
+                const inputObj = document.getElementById('message-input');
+                selectObj.addEventListener('change', (e) => {
+                    if (e.target.value && e.target.value !== 'custom') {
+                        inputObj.value = e.target.options[e.target.selectedIndex].text;
+                    } else {
+                        inputObj.value = '';
+                        inputObj.focus();
+                    }
+                });
+            },
+
+            async loadStandardQuestions() {
+                // Mock default questions
+                const questions = [
+                    { id: 1, question_text: "Quais as exceções para essa regra?" },
+                    { id: 2, question_text: "Pode me dar um exemplo prático?" },
+                    { id: 3, question_text: "Como isso se aplica na vida real?" }
+                ];
+                
+                const select = document.getElementById('standard-questions');
+                questions.forEach(q => {
+                    const opt = document.createElement('option');
+                    opt.value = q.id;
+                    opt.text = q.question_text;
+                    select.appendChild(opt);
+                });
+            },
+
+            async loadPath(nodeId) {
+                // Se nodeId for null, carrega a "Raiz" (Pontos de partida)
+                this.currentNodeId = nodeId;
+                
+                if (nodeId) {
+                    const res = await Api.fetch('get_chat_path', { node_id: nodeId });
+                    this.chatPath = res.path || [];
+                    
+                    // Atualiza o speaker baseado no último nó do caminho
+                    const lastNode = this.chatPath[this.chatPath.length - 1];
+                    this.currentSpeaker = lastNode.speaker === 1 ? 2 : 1;
+                } else {
+                    this.chatPath = [];
+                    this.currentSpeaker = 1; // Raiz começa com P1 perguntando
+                }
+
+                await this.loadBranches();
+                this.render();
+            },
+
+            async loadBranches() {
+                const res = await Api.fetch('get_branches', { parent_id: this.currentNodeId });
+                this.branches = res.branches || [];
+            },
+
+            async sendMessage() {
+                const input = document.getElementById('message-input');
+                const text = input.value.trim();
+                if (!text) return;
+
+                const res = await Api.fetch('add_node', {
+                    parent_id: this.currentNodeId,
+                    speaker: this.currentSpeaker,
+                    content: text,
+                    is_public: this.isPrivate ? 0 : 1
+                }, 'POST');
+
+                if (res.status === 'success') {
+                    input.value = '';
+                    document.getElementById('standard-questions').value = '';
+                    // Carrega o caminho apontando para a nova mensagem
+                    this.loadPath(res.id);
+                }
+            },
+
+            goHome() {
+                this.loadPath(null);
+            },
+
+            render() {
+                const container = document.getElementById('chat-container');
+                container.innerHTML = '';
+
+                // 1. Renderizar o Caminho Atual (As mensagens de cima pra baixo)
+                if (this.chatPath.length === 0) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-slate-500 text-center animate-fade-in">
+                            <i class="fas fa-seedling text-4xl mb-3 text-emerald-500/50"></i>
+                            <p class="text-lg">Comece uma nova linha de raciocínio.</p>
+                            <p class="text-sm">Faça sua primeira pergunta abaixo.</p>
+                        </div>`;
+                } else {
+                    this.chatPath.forEach(node => {
+                        container.innerHTML += this.createMessageHTML(node);
+                    });
+                }
+
+                // 2. Renderizar Derivações (Opções de clique, se houver)
+                if (this.branches.length > 0) {
+                    let branchTypeLabel = this.currentSpeaker === 1 ? "Perguntas derivadas disponíveis:" : "Respostas possíveis a partir daqui:";
+                    let branchesHtml = `
+                        <div class="mt-8 pt-4 border-t border-slate-700/50 animate-fade-in pl-4 border-l-2 border-l-blue-500/30 ml-2">
+                            <span class="text-xs text-slate-400 uppercase font-bold tracking-wider block mb-3">
+                                <i class="fas fa-code-branch mr-1 text-blue-400"></i> ${branchTypeLabel}
+                            </span>
+                            <div class="flex flex-col gap-2">
+                    `;
+                    
+                    this.branches.forEach(b => {
+                        branchesHtml += `
+                            <button onclick="app.loadPath(${b.id})" class="branch-item text-left bg-slate-800/80 p-3 rounded-xl border border-slate-700 hover:border-blue-500 hover:bg-slate-700 transition shadow-sm">
+                                <p class="text-sm md:text-base text-slate-200 line-clamp-2">${b.content}</p>
+                            </button>
+                        `;
+                    });
+                    branchesHtml += `</div></div>`;
+                    container.innerHTML += branchesHtml;
+                }
+
+                // 3. Atualizar UI de Input
+                const selectStandard = document.getElementById('standard-questions');
+                const inputObj = document.getElementById('message-input');
+                const speakerInd = document.getElementById('speaker-indicator');
+                const ctxInd = document.getElementById('context-indicator');
+
+                if (this.currentSpeaker === 1) {
+                    inputObj.placeholder = "Faça uma nova pergunta...";
+                    selectStandard.style.display = 'block';
+                    speakerInd.innerHTML = '<i class="fas fa-user mr-1"></i> VOCÊ (P1)';
+                    speakerInd.className = 'font-bold text-blue-400 text-xs';
+                } else {
+                    inputObj.placeholder = "Dê uma resposta...";
+                    selectStandard.style.display = 'none';
+                    speakerInd.innerHTML = 'INTERLOCUTOR (P2) <i class="fas fa-robot ml-1"></i>';
+                    speakerInd.className = 'font-bold text-slate-400 text-xs';
+                }
+
+                if(this.currentNodeId === null) {
+                    ctxInd.style.visibility = 'hidden';
+                } else {
+                    ctxInd.style.visibility = 'visible';
+                }
+
+                // Scroll to bottom
+                setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
+            },
+
+            createMessageHTML(node) {
+                const isPerson1 = node.speaker === 1;
+                const alignClass = isPerson1 ? 'justify-end' : 'justify-start';
+                const bubbleClass = isPerson1 ? 'chat-bubble-1 text-white' : 'chat-bubble-2 text-slate-100';
+                const author = isPerson1 ? 'Você' : 'Interlocutor';
+                
+                return `
+                    <div class="flex ${alignClass} mb-4 animate-fade-in">
+                        <div class="max-w-[85%] md:max-w-[75%] flex flex-col">
+                            <span class="text-xs text-slate-500 mb-1 font-semibold ${isPerson1 ? 'text-right' : 'text-left'}">${author}</span>
+                            <div class="${bubbleClass} p-3.5 md:p-4 shadow-md relative group text-sm md:text-base leading-relaxed">
+                                ${node.content}
+                                
+                                <button onclick="Api.generateAudio(${node.id})" class="absolute -bottom-3 ${isPerson1 ? '-left-3' : '-right-3'} bg-slate-700 text-slate-300 w-8 h-8 rounded-full shadow-lg border border-slate-600 hover:text-blue-400 transition flex items-center justify-center">
+                                    <i class="fas fa-volume-up text-xs"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-            chatContainer.insertAdjacentHTML('beforeend', msgHtml);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        // Função para mostrar opções de ramificação (filhos de um nó)
-        function showBranches(branches) {
-            if(branches.length === 0) return;
-            
-            let branchesHtml = `<div class="branch-line flex flex-col gap-2 my-4">
-                <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Derivações possíveis:</span>
-            `;
-            
-            branches.forEach(b => {
-                branchesHtml += `
-                    <button onclick="loadPath(${b.id})" class="text-left bg-slate-800 p-3 rounded border border-slate-700 hover:border-blue-500 hover:bg-slate-700 transition text-sm text-slate-300">
-                        <i class="fas fa-code-branch mr-2 text-blue-500"></i> ${b.content}
-                    </button>
                 `;
-            });
-            branchesHtml += `</div>`;
-            chatContainer.insertAdjacentHTML('beforeend', branchesHtml);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        // Simulação de Envio (Aqui você conectaria com api.php)
-        btnSend.addEventListener('click', () => {
-            const text = messageInput.value.trim();
-            if(!text) return;
-
-            // Simulando chamada para api.php?action=add_node
-            const fakeNewNodeId = Math.floor(Math.random() * 1000);
-            
-            appendMessage(text, currentSpeaker, fakeNewNodeId);
-            currentNodeId = fakeNewNodeId;
-            messageInput.value = '';
-            
-            // Alterna o turno
-            currentSpeaker = currentSpeaker === 1 ? 2 : 1;
-            
-            if (currentSpeaker === 2) {
-                messageInput.placeholder = "Digite a resposta do Personagem 2...";
-                selectStandard.style.display = 'none'; // Respostas não usam perguntas padrão
-            } else {
-                messageInput.placeholder = "Faça uma nova pergunta derivada...";
-                selectStandard.style.display = 'block';
             }
-        });
+        };
 
-        function playAudio(nodeId) {
-            // Aqui chamaria o fish_audio.php via fetch
-            alert("Chamando fish_audio.php para o nó ID: " + nodeId);
-        }
+        // --- MOCK BACKEND PARA TESTE IMEDIATO (SÓ NO NAVEGADOR) ---
+        const MockBackend = {
+            db: [
+                {id: 1, parent_id: null, speaker: 1, content: "O que é React?"},
+                {id: 2, parent_id: 1, speaker: 2, content: "É uma biblioteca JavaScript para construção de interfaces."},
+                {id: 3, parent_id: 2, speaker: 1, content: "Como isso se aplica na vida real?"},
+                {id: 4, parent_id: 3, speaker: 2, content: "Você usa para criar SPAs, como o Instagram ou o Netflix web."},
+                {id: 5, parent_id: 2, speaker: 1, content: "Quais as exceções para essa regra?"},
+                {id: 6, parent_id: 5, speaker: 2, content: "Não é uma regra, mas não é ideal para sites muito simples estáticos."}
+            ],
+            nextId: 7,
+            
+            async handle(action, params, method) {
+                await new Promise(r => setTimeout(r, 200)); // simula rede
+                if(action === 'add_node') {
+                    const node = { id: this.nextId++, parent_id: params.parent_id, speaker: params.speaker, content: params.content };
+                    this.db.push(node);
+                    return { status: 'success', id: node.id };
+                }
+                if(action === 'get_chat_path') {
+                    let path = [];
+                    let curr = this.db.find(n => n.id === params.node_id);
+                    while(curr) {
+                        path.unshift(curr);
+                        curr = this.db.find(n => n.id === curr.parent_id);
+                    }
+                    return { status: 'success', path };
+                }
+                if(action === 'get_branches') {
+                    const branches = this.db.filter(n => n.parent_id === params.parent_id);
+                    return { status: 'success', branches };
+                }
+            }
+        };
 
-        function loadPath(nodeId) {
-            // Simulando chamada para api.php?action=get_chat_path
-            alert("Carregando ramificação " + nodeId);
-        }
-
-        // Mensagem inicial de tutorial
-        appendMessage("Bem-vindo ao Info Derivadas. Faça a sua primeira pergunta para iniciar a árvore de conhecimento.", 2, 0);
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => app.init());
 
     </script>
 </body>
