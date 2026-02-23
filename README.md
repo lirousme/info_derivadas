@@ -15,6 +15,7 @@ email (VARCHAR 100) [UNIQUE] - E-mail para login e contato.
 password_hash (VARCHAR 255) - Hash seguro da senha do usuário.
 encryption_key (VARCHAR 255) - Chave gerada no cadastro para criptografar as mensagens deste usuário ponta a ponta.
 created_at (TIMESTAMP) - Data e hora de criação da conta.
+session_token (VARCHAR 255)
 
 2. Tabela Central: Nós do Chat (chat_nodes)
 
