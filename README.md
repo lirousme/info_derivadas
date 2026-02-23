@@ -39,7 +39,7 @@ id (INT) [PK] - Identificador único do registro de progresso.
 user_id (INT) [FK] - O usuário que está estudando.
 node_id (INT) [FK] - O nó (mensagem/tópico) que está sendo estudado.
 repetitions (INT) - Quantas vezes o usuário já revisou este item (Padrão: 0).
-interval_days (INT) - Intervalo de dias até a próxima revisão (Padrão: 1).
+interval_minutes (INT) - Intervalo de dias até a próxima revisão (Padrão: 1).
 ease_factor (FLOAT) - Fator de facilidade do algoritmo SM-2 (Padrão: 2.5).
 next_review_date (DATETIME) - Data e hora exatas de quando este item deve ser revisado novamente.
 score (INT) - Pontuação atual ou nível de maestria alcançado neste chat.
