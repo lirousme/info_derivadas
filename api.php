@@ -1,5 +1,5 @@
 <?php
-// api.php - Backend com Sistema de Estudo (SM-2) Integrado
+// api.php - Backend com Sistema de Diretórios e Pontuação Linear
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -41,7 +41,7 @@ $user = $stmt->fetch();
 
 if (!$user) {
     http_response_code(401);
-    echo json_encode(['error' => 'Sessão inválida ou expirada. Faça login novamente.']);
+    echo json_encode(['error' => 'Sessão inválida ou expirada.']);
     exit;
 }
 
@@ -54,6 +54,24 @@ $action = $_GET['action'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
 
+    // CRIAR DIRETÓRIO / GRUPO
+    if ($action === 'create_group') {
+        $parent_id = !empty($data['parent_id']) ? $data['parent_id'] : null;
+        $name = trim($data['name']);
+        $type = in_array($data['type'], ['folder', 'chat']) ? $data['type'] : 'folder';
+
+        if (!$name) {
+            echo json_encode(['status' => 'error', 'message' => 'Nome do grupo é obrigatório.']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO `groups` (user_id, parent_id, name, type) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$current_user_id, $parent_id, $name, $type]);
+        
+        echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId()]);
+        exit;
+    }
+
     // ADICIONAR NOVA MENSAGEM
     if ($action === 'add_node') {
         $parent_id = !empty($data['parent_id']) ? $data['parent_id'] : null;
@@ -65,38 +83,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $pdo->prepare("INSERT INTO chat_nodes (parent_id, user_id, speaker, content_encrypted, is_public) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$parent_id, $current_user_id, $speaker, $encrypted_content, $is_public]);
-        $new_id = $pdo->lastInsertId();
         
-        echo json_encode(['status' => 'success', 'id' => $new_id]);
+        echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId()]);
         exit;
     }
 
-    // ADICIONAR UM CHAT (NÓ) AOS ESTUDOS
+    // CONSOLIDAR CHAT E ASSOCIAR AO GRUPO
     if ($action === 'add_to_study') {
         $node_id = $data['node_id'];
+        $group_id = $data['group_id'];
         
-        // Verifica se já existe
-        $stmt = $pdo->prepare("SELECT id FROM study_progress WHERE user_id = ? AND node_id = ?");
-        $stmt->execute([$current_user_id, $node_id]);
-        if ($stmt->fetch()) {
-            echo json_encode(['status' => 'error', 'message' => 'Chat já está nos seus estudos.']);
+        if (!$group_id) {
+            echo json_encode(['status' => 'error', 'message' => 'Grupo não especificado.']);
             exit;
         }
 
-        // Insere com valores padrão. interval_minutes = 1. Revisão imediata (NOW())
-        $stmt = $pdo->prepare("INSERT INTO study_progress (user_id, node_id, repetitions, interval_minutes, ease_factor, next_review_date, score) VALUES (?, ?, 0, 1, 2.5, NOW(), 0)");
+        // Verifica se já está nos estudos
+        $stmt = $pdo->prepare("SELECT id FROM study_progress WHERE user_id = ? AND node_id = ?");
         $stmt->execute([$current_user_id, $node_id]);
+        if (!$stmt->fetch()) {
+            // Se não existe, cria a raiz de progresso (pontuação zero)
+            $stmt = $pdo->prepare("INSERT INTO study_progress (user_id, node_id, repetitions, interval_minutes, ease_factor, next_review_date, score) VALUES (?, ?, 0, 1440, 2.5, NOW(), 0)");
+            $stmt->execute([$current_user_id, $node_id]);
+        }
+
+        // Associa o chat ao grupo selecionado (ignora se já estiver lá)
+        $stmt = $pdo->prepare("INSERT IGNORE INTO group_nodes (group_id, node_id) VALUES (?, ?)");
+        $stmt->execute([$group_id, $node_id]);
         
         echo json_encode(['status' => 'success']);
         exit;
     }
 
-    // SUBMETER REVISÃO DE ESTUDO (ALGORITMO SM-2 EM MINUTOS)
+    // SUBMETER REVISÃO (LÓGICA LINEAR, TODA REVISÃO TEM O MESMO PESO E VALOR)
     if ($action === 'submit_review') {
         $node_id = $data['node_id'];
-        $quality = (int)$data['quality']; // 0 a 5 (Usamos 3=Difícil, 4=Bom, 5=Fácil)
-
-        $stmt = $pdo->prepare("SELECT * FROM study_progress WHERE user_id = ? AND node_id = ?");
+        
+        $stmt = $pdo->prepare("SELECT id, repetitions, score FROM study_progress WHERE user_id = ? AND node_id = ?");
         $stmt->execute([$current_user_id, $node_id]);
         $progress = $stmt->fetch();
 
@@ -105,42 +128,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        $repetitions = (int)$progress['repetitions'];
-        // Puxamos os minutos salvos na base
-        $interval = (int)$progress['interval_minutes']; 
-        $ease = (float)$progress['ease_factor'];
-
-        if ($quality < 3) {
-            // Se errou/esqueceu totalmente, volta pro zero (1 minuto)
-            $repetitions = 0;
-            $interval = 1; 
-        } else {
-            // Acertou/Lembrou
-            if ($repetitions === 0) {
-                $interval = 1; // 1 minuto
-            } elseif ($repetitions === 1) {
-                $interval = 5; // 5 minutos (Ajustado para o fluxo rápido)
-            } else {
-                // Multiplica os minutos pelo fator de facilidade (ex: 5 * 2.5 = 13 minutos)
-                $interval = round($interval * $ease);
-            }
-            $repetitions++;
-        }
-
-        // Atualiza fator de facilidade
-        $ease = $ease + (0.1 - (5 - $quality) * (0.08 + (5 - $quality) * 0.02));
-        if ($ease < 1.3) $ease = 1.3;
-
-        // --- A MÁGICA DOS MINUTOS ACONTECE AQUI ---
-        // Adiciona $interval minutos à hora exata atual
-        $next_review = date('Y-m-d H:i:s', strtotime("+$interval minutes"));
-
-        // Atualiza o banco com a nova quantidade de minutos (interval_minutes)
-        $stmt = $pdo->prepare("UPDATE study_progress SET repetitions = ?, interval_minutes = ?, ease_factor = ?, next_review_date = ?, score = score + ? WHERE id = ?");
+        $repetitions = (int)$progress['repetitions'] + 1;
         
-        // Dá pontos apenas se a qualidade for boa
-        $pontos = $quality >= 3 ? $quality : 0;
-        $stmt->execute([$repetitions, $interval, $ease, $next_review, $pontos, $progress['id']]);
+        // PONTUAÇÃO FIXA: +10 pontos de XP por revisão completada
+        $score_increment = 10; 
+        
+        // INTERVALO FIXO: A próxima revisão acontece daqui 1 dia (1440 minutos)
+        // Você pode alterar isso para testes (ex: +5 minutes)
+        $next_review = date('Y-m-d H:i:s', strtotime("+1440 minutes"));
+
+        $stmt = $pdo->prepare("UPDATE study_progress SET repetitions = ?, next_review_date = ?, score = score + ? WHERE id = ?");
+        $stmt->execute([$repetitions, $next_review, $score_increment, $progress['id']]);
 
         echo json_encode(['status' => 'success', 'next_review' => $next_review]);
         exit;
@@ -150,7 +148,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // --- MÉTODOS GET ---
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
-    // PEGAR O CAMINHO DE UMA CONVERSA
+    // NAVEGAR DIRETÓRIOS E CALCULAR PONTUAÇÃO (SQL AVANÇADO)
+    if ($action === 'get_directory') {
+        $parent_id = !empty($_GET['parent_id']) && $_GET['parent_id'] !== 'null' ? (int)$_GET['parent_id'] : null;
+        
+        // Busca os grupos que estão dentro deste parent_id
+        if ($parent_id === null) {
+            $stmt = $pdo->prepare("SELECT id, name, type FROM `groups` WHERE user_id = ? AND parent_id IS NULL ORDER BY type ASC, name ASC");
+            $stmt->execute([$current_user_id]);
+        } else {
+            $stmt = $pdo->prepare("SELECT id, name, type FROM `groups` WHERE user_id = ? AND parent_id = ? ORDER BY type ASC, name ASC");
+            $stmt->execute([$current_user_id, $parent_id]);
+        }
+        $dirs = $stmt->fetchAll();
+
+        // Cálculo RECURSIVO da pontuação para cada diretório encontrado
+        foreach ($dirs as &$dir) {
+            $dirId = $dir['id'];
+            $queryScore = "
+                WITH RECURSIVE GroupHierarchy AS (
+                    SELECT id, parent_id FROM `groups` WHERE id = :root_id
+                    UNION ALL
+                    SELECT g.id, g.parent_id FROM `groups` g
+                    INNER JOIN GroupHierarchy gh ON g.parent_id = gh.id
+                )
+                SELECT IFNULL(SUM(sp.score), 0) as total_score
+                FROM GroupHierarchy gh
+                INNER JOIN group_nodes gn ON gn.group_id = gh.id
+                INNER JOIN study_progress sp ON sp.node_id = gn.node_id
+                WHERE sp.user_id = :user_id;
+            ";
+            $stmtScore = $pdo->prepare($queryScore);
+            $stmtScore->execute(['root_id' => $dirId, 'user_id' => $current_user_id]);
+            $resScore = $stmtScore->fetch();
+            $dir['score'] = (int)$resScore['total_score'];
+        }
+
+        echo json_encode(['status' => 'success', 'directories' => $dirs]);
+        exit;
+    }
+
+    // PEGAR O CAMINHO DE UMA CONVERSA (Árvore/Grafo)
     if ($action === 'get_chat_path') {
         $node_id = $_GET['node_id'] ?? null;
         $path = [];
@@ -180,55 +218,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
-    // OBTER TODOS OS CHATS CONSOLIDADOS DO USUÁRIO (PERFIL)
-    if ($action === 'get_my_chats') {
-        $stmt = $pdo->prepare("
-            SELECT sp.node_id, sp.repetitions, sp.next_review_date, cn.content_encrypted, cn.created_at 
-            FROM study_progress sp 
-            JOIN chat_nodes cn ON sp.node_id = cn.id 
-            WHERE sp.user_id = ? 
-            ORDER BY cn.created_at DESC
-        ");
-        $stmt->execute([$current_user_id]);
-        $chats = $stmt->fetchAll();
-
-        foreach ($chats as &$chat) {
-            $chat['content'] = decryptMessage($chat['content_encrypted'], $user_encryption_key);
-            unset($chat['content_encrypted']);
-        }
-
-        echo json_encode(['status' => 'success', 'chats' => $chats]);
-        exit;
-    }
-
-    // PEGAR AS DERIVAÇÕES
-    if ($action === 'get_branches') {
-        $parent_id = $_GET['parent_id'] ?? null;
-        
-        if ($parent_id === null || $parent_id === 'null' || $parent_id === '') {
-            $stmt = $pdo->prepare("SELECT id, speaker, content_encrypted FROM chat_nodes WHERE parent_id IS NULL AND user_id = ? ORDER BY id DESC");
-            $stmt->execute([$current_user_id]);
-        } else {
-            $stmt = $pdo->prepare("SELECT id, speaker, content_encrypted FROM chat_nodes WHERE parent_id = ? AND user_id = ?");
-            $stmt->execute([$parent_id, $current_user_id]);
-        }
-        
-        $branches = $stmt->fetchAll();
-
-        foreach ($branches as &$branch) {
-            $branch['content'] = decryptMessage($branch['content_encrypted'], $user_encryption_key);
-            unset($branch['content_encrypted']);
-        }
-
-        echo json_encode(['status' => 'success', 'branches' => $branches]);
-        exit;
-    }
-
-    // OBTER FILA DE ESTUDOS PENDENTES
+    // OBTER FILA DE ESTUDOS DE UM GRUPO ESPECÍFICO
     if ($action === 'get_study_queue') {
-        // Pega todos os nodes agendados para revisão até o momento atual
-        $stmt = $pdo->prepare("SELECT node_id, score FROM study_progress WHERE user_id = ? AND next_review_date <= NOW() ORDER BY next_review_date ASC LIMIT 10");
-        $stmt->execute([$current_user_id]);
+        $group_id = $_GET['group_id'] ?? null;
+        if (!$group_id) {
+            echo json_encode(['status' => 'success', 'queue' => []]);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT sp.node_id, sp.score 
+            FROM study_progress sp
+            INNER JOIN group_nodes gn ON gn.node_id = sp.node_id
+            WHERE sp.user_id = ? AND gn.group_id = ? AND sp.next_review_date <= NOW() 
+            ORDER BY sp.next_review_date ASC LIMIT 15
+        ");
+        $stmt->execute([$current_user_id, $group_id]);
         $queue = $stmt->fetchAll();
         
         echo json_encode(['status' => 'success', 'queue' => $queue]);
