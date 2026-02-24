@@ -1,5 +1,5 @@
 <?php
-// api.php - Backend com Sistema de Diretórios, Pontuação e Edição de Nós
+// api.php - Backend com Sistema de Diretórios, Pontuação, Edição de Nós e Upload de Imagens
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -12,6 +12,7 @@ require_once 'db.php';
 define('ENCRYPTION_METHOD', 'AES-256-CBC');
 
 function encryptMessage($message, $userKey) {
+    if ($message === '') return ''; // Permite mensagem vazia (caso tenha só imagem)
     $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length(ENCRYPTION_METHOD));
     $encrypted = openssl_encrypt($message, ENCRYPTION_METHOD, $userKey, 0, $iv);
     return base64_encode($encrypted . '::' . base64_encode($iv));
@@ -24,6 +25,31 @@ function decryptMessage($payload, $userKey) {
     list($encrypted_data, $iv_base64) = $parts;
     $iv = base64_decode($iv_base64);
     return openssl_decrypt($encrypted_data, ENCRYPTION_METHOD, $userKey, 0, $iv);
+}
+
+// Função auxiliar para upload de imagens
+function handleImageUpload($fileField) {
+    if (isset($_FILES[$fileField]) && $_FILES[$fileField]['error'] === UPLOAD_ERR_OK) {
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($fileInfo, $_FILES[$fileField]['tmp_name']);
+        finfo_close($fileInfo);
+
+        if (in_array($mimeType, $allowedTypes)) {
+            $uploadDir = 'uploads/images/';
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $ext = pathinfo($_FILES[$fileField]['name'], PATHINFO_EXTENSION);
+            $filename = uniqid('img_') . '_' . time() . '.' . $ext;
+            $targetPath = $uploadDir . $filename;
+            
+            if (move_uploaded_file($_FILES[$fileField]['tmp_name'], $targetPath)) {
+                return $targetPath;
+            }
+        }
+    }
+    return null;
 }
 
 // --- VERIFICAÇÃO DE AUTENTICAÇÃO ---
@@ -52,7 +78,15 @@ $action = $_GET['action'] ?? '';
 
 // --- MÉTODOS POST ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $data = json_decode(file_get_contents('php://input'), true);
+    
+    // Suporte para JSON ou Multipart Form-Data (Upload de Arquivos)
+    $isMultipart = strpos($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data') !== false;
+    
+    if ($isMultipart) {
+        $data = $_POST;
+    } else {
+        $data = json_decode(file_get_contents('php://input'), true) ?? [];
+    }
 
     // CRIAR DIRETÓRIO / GRUPO
     if ($action === 'create_group') {
@@ -123,14 +157,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$nodeId]);
                 if ($stmt->fetchColumn() > 0) continue; 
 
-                $stmt = $pdo->prepare("SELECT parent_id FROM chat_nodes WHERE id = ?");
+                $stmt = $pdo->prepare("SELECT parent_id, audio_url, image_url FROM chat_nodes WHERE id = ?");
                 $stmt->execute([$nodeId]);
-                $parentId = $stmt->fetchColumn();
+                $nodeData = $stmt->fetch();
 
-                $pdo->prepare("DELETE FROM study_progress WHERE node_id = ?")->execute([$nodeId]);
-                $pdo->prepare("DELETE FROM chat_nodes WHERE id = ?")->execute([$nodeId]);
+                if ($nodeData) {
+                    $parentId = $nodeData['parent_id'];
+                    // Remove arquivos físicos
+                    if ($nodeData['audio_url'] && file_exists($nodeData['audio_url'])) unlink($nodeData['audio_url']);
+                    if ($nodeData['image_url'] && file_exists($nodeData['image_url'])) unlink($nodeData['image_url']);
 
-                if ($parentId) { pruneOrphanedChats($pdo, [$parentId]); }
+                    $pdo->prepare("DELETE FROM study_progress WHERE node_id = ?")->execute([$nodeId]);
+                    $pdo->prepare("DELETE FROM chat_nodes WHERE id = ?")->execute([$nodeId]);
+
+                    if ($parentId) { pruneOrphanedChats($pdo, [$parentId]); }
+                }
             }
         }
 
@@ -164,48 +205,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // ADICIONAR NOVA MENSAGEM
+    // ADICIONAR NOVA MENSAGEM (ATUALIZADO COM IMAGEM)
     if ($action === 'add_node') {
-        $parent_id = !empty($data['parent_id']) ? $data['parent_id'] : null;
-        $speaker = (int)$data['speaker'];
-        $content = $data['content'];
+        $parent_id = !empty($data['parent_id']) && $data['parent_id'] !== 'null' ? $data['parent_id'] : null;
+        $speaker = (int)($data['speaker'] ?? 1);
+        $content = trim($data['content'] ?? '');
         $is_public = $data['is_public'] ?? 0;
+        
+        $imageUrl = handleImageUpload('image');
+
+        if (empty($content) && !$imageUrl) {
+            echo json_encode(['status' => 'error', 'message' => 'A mensagem deve conter texto ou uma imagem.']);
+            exit;
+        }
 
         $encrypted_content = encryptMessage($content, $user_encryption_key);
 
-        $stmt = $pdo->prepare("INSERT INTO chat_nodes (parent_id, user_id, speaker, content_encrypted, is_public) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$parent_id, $current_user_id, $speaker, $encrypted_content, $is_public]);
+        $stmt = $pdo->prepare("INSERT INTO chat_nodes (parent_id, user_id, speaker, content_encrypted, image_url, is_public) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$parent_id, $current_user_id, $speaker, $encrypted_content, $imageUrl, $is_public]);
         
         echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId()]);
         exit;
     }
 
-    // EDITAR MENSAGEM (NOVO)
+    // EDITAR MENSAGEM (ATUALIZADO COM IMAGEM)
     if ($action === 'edit_node') {
         $node_id = $data['node_id'] ?? null;
-        $content = $data['content'] ?? '';
+        $content = trim($data['content'] ?? '');
+        $remove_image = isset($data['remove_image']) && $data['remove_image'] === 'true';
 
-        if (!$node_id || !$content) {
-            echo json_encode(['status' => 'error', 'message' => 'Dados inválidos.']);
+        if (!$node_id) {
+            echo json_encode(['status' => 'error', 'message' => 'ID da mensagem inválido.']);
             exit;
         }
 
-        // Criptografa o novo conteúdo antes de salvar
+        // Verifica permissão e pega a imagem atual
+        $stmt = $pdo->prepare("SELECT image_url FROM chat_nodes WHERE id = ? AND user_id = ?");
+        $stmt->execute([$node_id, $current_user_id]);
+        $node = $stmt->fetch();
+
+        if (!$node) {
+            echo json_encode(['status' => 'error', 'message' => 'Mensagem não encontrada ou sem permissão.']);
+            exit;
+        }
+
+        $currentImageUrl = $node['image_url'];
+        $newImageUrl = $currentImageUrl;
+
+        // Processamento da Imagem
+        if ($remove_image) {
+            if ($currentImageUrl && file_exists($currentImageUrl)) unlink($currentImageUrl);
+            $newImageUrl = null;
+        } else {
+            $uploadedImage = handleImageUpload('image');
+            if ($uploadedImage) {
+                if ($currentImageUrl && file_exists($currentImageUrl)) unlink($currentImageUrl);
+                $newImageUrl = $uploadedImage;
+            }
+        }
+
+        if (empty($content) && !$newImageUrl) {
+            echo json_encode(['status' => 'error', 'message' => 'A mensagem não pode ficar vazia (sem texto e sem imagem).']);
+            exit;
+        }
+
         $encrypted_content = encryptMessage($content, $user_encryption_key);
 
-        // Atualiza garantindo que o nó pertence ao usuário logado
-        $stmt = $pdo->prepare("UPDATE chat_nodes SET content_encrypted = ? WHERE id = ? AND user_id = ?");
-        $stmt->execute([$encrypted_content, $node_id, $current_user_id]);
+        $stmtUpdate = $pdo->prepare("UPDATE chat_nodes SET content_encrypted = ?, image_url = ? WHERE id = ?");
+        $stmtUpdate->execute([$encrypted_content, $newImageUrl, $node_id]);
 
-        if ($stmt->rowCount() > 0) {
-            echo json_encode(['status' => 'success']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Mensagem não encontrada ou sem permissão.']);
-        }
+        echo json_encode(['status' => 'success']);
         exit;
     }
 
-    // EXCLUIR MENSAGEM EM CASCATA (NOVO)
+    // EXCLUIR MENSAGEM EM CASCATA (ATUALIZADO)
     if ($action === 'delete_node') {
         $node_id = $data['node_id'] ?? null;
 
@@ -214,7 +287,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Verifica permissão e pega o parent_id para o frontend saber para onde voltar
         $stmt = $pdo->prepare("SELECT parent_id FROM chat_nodes WHERE id = ? AND user_id = ?");
         $stmt->execute([$node_id, $current_user_id]);
         $node = $stmt->fetch();
@@ -226,31 +298,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $parentId = $node['parent_id'];
 
-        // Função recursiva para deletar a mensagem e TODOS os "galhos" (derivações) que nasceram a partir dela
         function deleteNodeTree($pdo, $startNodeId) {
-            // Pega todos os nós filhos que derivaram deste
             $stmt = $pdo->prepare("SELECT id FROM chat_nodes WHERE parent_id = ?");
             $stmt->execute([$startNodeId]);
             $children = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // Chama recursão para apagar os filhos dos filhos
             foreach ($children as $childId) {
                 deleteNodeTree($pdo, $childId);
             }
 
-            // Exclui dependências desta mensagem
             $pdo->prepare("DELETE FROM study_progress WHERE node_id = ?")->execute([$startNodeId]);
             $pdo->prepare("DELETE FROM group_nodes WHERE node_id = ?")->execute([$startNodeId]);
             
-            // Exclui o áudio gerado se ele existir fisicamente no servidor
-            $stmtAudio = $pdo->prepare("SELECT audio_url FROM chat_nodes WHERE id = ?");
-            $stmtAudio->execute([$startNodeId]);
-            $audioUrl = $stmtAudio->fetchColumn();
-            if ($audioUrl && file_exists($audioUrl)) {
-                unlink($audioUrl);
+            // Exclui áudio e imagem
+            $stmtMedia = $pdo->prepare("SELECT audio_url, image_url FROM chat_nodes WHERE id = ?");
+            $stmtMedia->execute([$startNodeId]);
+            $media = $stmtMedia->fetch();
+            
+            if ($media) {
+                if ($media['audio_url'] && file_exists($media['audio_url'])) unlink($media['audio_url']);
+                if ($media['image_url'] && file_exists($media['image_url'])) unlink($media['image_url']);
             }
 
-            // Finalmente, exclui a mensagem
             $pdo->prepare("DELETE FROM chat_nodes WHERE id = ?")->execute([$startNodeId]);
         }
 
