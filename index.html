@@ -65,7 +65,6 @@
                 <h1 class="text-xs md:text-sm font-bold text-slate-500 flex items-center">
                     <i class="fas fa-network-wired mr-2 text-blue-400"></i> Meu Conhecimento
                 </h1>
-                <!-- Breadcrumbs Dinâmicos -->
                 <div id="breadcrumbs" class="flex items-center gap-2 text-sm md:text-base text-slate-300 overflow-x-auto no-scrollbar whitespace-nowrap">
                     <!-- Preenchido via JS -->
                 </div>
@@ -76,7 +75,6 @@
             </button>
         </div>
 
-        <!-- Abas internas da Pasta de Chats (Só aparecem dentro de um grupo tipo 'chat') -->
         <div id="chat-group-tabs" class="hidden-app flex px-4 gap-4 md:gap-6 text-sm font-medium text-slate-400 overflow-x-auto no-scrollbar border-t border-slate-800 pt-2">
             <button id="tab-study" class="nav-btn pb-3 transition whitespace-nowrap active" onclick="app.switchTab('study')">
                 <i class="fas fa-brain mr-1"></i> Fila de Estudo
@@ -89,8 +87,6 @@
     </header>
 
     <!-- MAIN VIEWS -->
-    
-    <!-- View 1: Navegador de Diretórios (Início) -->
     <main id="view-directory" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth bg-slate-900">
         <div class="max-w-4xl mx-auto">
             <div class="flex justify-between items-end mb-6">
@@ -108,16 +104,11 @@
         </div>
     </main>
 
-    <!-- View 2: Fila de Estudos -->
     <main id="view-study" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
-    
-    <!-- View 3: Criação de Chats -->
     <main id="view-explore" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
 
 
     <!-- FOOTERS -->
-    
-    <!-- Footer Explorar/Criar -->
     <footer id="footer-explore" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto flex flex-col gap-2">
             <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 hidden-app justify-between items-center">
@@ -142,16 +133,13 @@
         </div>
     </footer>
 
-    <!-- Footer Estudo -->
     <footer id="footer-study" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto text-center flex flex-col gap-3">
             <p class="text-sm text-slate-300 font-semibold">Leitura concluída? Conquiste XP.</p>
-            <div class="flex gap-2 justify-center">
-                <button onclick="app.submitStudy()" class="flex-1 text-sm md:text-base bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <!-- Removido botão Derivar Novo. Botão Absorvido centralizado e expandido -->
+            <div class="flex justify-center">
+                <button onclick="app.submitStudy()" class="w-full md:w-2/3 text-sm md:text-base bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                     <i class="fas fa-bolt text-yellow-300"></i> Absorvido (+10 XP)
-                </button>
-                <button onclick="app.continueChat()" class="flex-1 text-sm md:text-base bg-blue-900/60 hover:bg-blue-800/80 text-blue-200 border border-blue-500/50 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2">
-                    <i class="fas fa-code-branch"></i> Derivar Novo
                 </button>
             </div>
         </div>
@@ -193,52 +181,8 @@
         </div>
     </div>
 
-    <!-- Modal Editar/Excluir Grupo -->
-    <div id="modal-edit-group" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 hidden-app">
-        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl w-full max-w-sm">
-            <h3 class="text-xl font-bold text-white mb-4"><i class="fas fa-cog text-blue-400 mr-2"></i>Editar Grupo</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-1">Nome do Diretório/Grupo</label>
-                    <input type="text" id="edit-group-name" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-1">Tipo de Conteúdo</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="edit-group-type" value="folder" class="peer hidden">
-                            <div class="text-center p-3 rounded-xl border border-slate-600 bg-slate-900 text-slate-400 peer-checked:bg-blue-600/20 peer-checked:border-blue-500 peer-checked:text-blue-300 transition text-sm">
-                                <i class="fas fa-folder-tree block mb-1 text-lg"></i>
-                                Outros Grupos
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="edit-group-type" value="chat" class="peer hidden">
-                            <div class="text-center p-3 rounded-xl border border-slate-600 bg-slate-900 text-slate-400 peer-checked:bg-emerald-600/20 peer-checked:border-emerald-500 peer-checked:text-emerald-300 transition text-sm">
-                                <i class="fas fa-comments block mb-1 text-lg"></i>
-                                Lista de Chats
-                            </div>
-                        </label>
-                    </div>
-                </div>
-                <div class="pt-4 border-t border-slate-700">
-                    <button onclick="app.submitDeleteGroup()" class="w-full py-2 rounded-lg bg-red-500/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400 font-bold transition flex justify-center items-center gap-2">
-                        <i class="fas fa-trash-alt"></i> Excluir Diretório
-                    </button>
-                    <!-- AVISO ATUALIZADO AQUI -->
-                    <p class="text-[10px] text-slate-500 text-center mt-2">Atenção: Excluirá todas as subpastas. Chats não vinculados a outros grupos também serão excluídos permanentemente da árvore.</p>
-                </div>
-                <div class="flex gap-2 mt-4">
-                    <button onclick="app.closeEditGroupModal()" class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition">Cancelar</button>
-                    <button onclick="app.submitEditGroup()" class="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-lg">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
 
     <script>
-        // --- AUTENTICAÇÃO --- 
         const Auth = {
             tokenKey: 'info_derivadas_token',
             isLoginMode: true,
@@ -293,7 +237,6 @@
             getToken() { return localStorage.getItem(this.tokenKey); }
         };
 
-        // --- API COMMUNICATIONS ---
         class Api {
             static getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Auth.getToken()}` }; }
             static async fetch(endpoint, params = {}, method = 'GET') {
@@ -317,18 +260,18 @@
             static async generateAudio(nodeId) { return (await fetch(`fish_audio.php?id=${nodeId}`, { headers: this.getHeaders() })).json(); }
         }
 
-        // --- LÓGICA DO APP (DIRETÓRIOS E ÁRVORES) ---
         const app = {
             dirPath: [], 
+            
             currentNodeId: null, 
             currentSpeaker: 1,   
             isPrivate: true,
             chatPath: [],        
             isDeriving: false, 
             derivationBaseId: null, 
+            
             studyQueue: [],
             currentStudyNode: null,
-            editingGroupId: null,
 
             init() {
                 this.bindEvents();
@@ -373,8 +316,6 @@
                 setTimeout(() => { toast.classList.remove('opacity-100', 'translate-y-0'); toast.classList.add('opacity-0', 'translate-y-[-20px]'); }, 3000);
             },
 
-            // --- SISTEMA DE DIRETÓRIOS ---
-            
             async loadDirectoryLevel(groupId, groupName = 'Raiz', groupType = 'folder') {
                 if (groupId === null) {
                     this.dirPath = [];
@@ -460,9 +401,6 @@
                                 </div>
                             </div>
                             <div class="flex flex-col items-end shrink-0 pl-2">
-                                <button onclick="event.stopPropagation(); app.openEditGroupModal(${dir.id}, '${dir.name}', '${dir.type}')" class="text-slate-500 hover:text-blue-400 mb-2 p-1 transition" title="Configurações do Grupo">
-                                    <i class="fas fa-cog"></i>
-                                </button>
                                 <span class="text-xs text-slate-500 font-bold">XP</span>
                                 <span class="text-lg font-black ${style.icon}">${dir.score}</span>
                             </div>
@@ -485,52 +423,7 @@
                 const res = await Api.fetch('create_group', { parent_id: parentId, name, type }, 'POST');
                 if (res.status === 'success') {
                     document.getElementById('modal-group').classList.add('hidden-app');
-                    this.loadDirectoryLevel(parentId);
-                } else {
-                    this.showToast(res.message, "error");
-                }
-            },
-
-            openEditGroupModal(id, name, type) {
-                this.editingGroupId = id;
-                document.getElementById('edit-group-name').value = name;
-                document.querySelector(`input[name="edit-group-type"][value="${type}"]`).checked = true;
-                document.getElementById('modal-edit-group').classList.remove('hidden-app');
-            },
-
-            closeEditGroupModal() {
-                this.editingGroupId = null;
-                document.getElementById('modal-edit-group').classList.add('hidden-app');
-            },
-
-            async submitEditGroup() {
-                const name = document.getElementById('edit-group-name').value;
-                const type = document.querySelector('input[name="edit-group-type"]:checked').value;
-
-                const res = await Api.fetch('edit_group', { group_id: this.editingGroupId, name, type }, 'POST');
-                if (res.status === 'success') {
-                    this.closeEditGroupModal();
-                    this.showToast("Grupo atualizado com sucesso!");
-                    const parentId = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1].id : null;
                     this.loadDirectoryLevel(parentId); 
-                } else {
-                    this.showToast(res.message, "error");
-                }
-            },
-
-            // ALERTA JAVASCRIPT ATUALIZADO
-            async submitDeleteGroup() {
-                if (!confirm("Atenção! Você tem certeza que deseja excluir este diretório?\n\n- Todas as subpastas também serão excluídas.\n- Chats que não estiverem vinculados a nenhum outro grupo no sistema inteiro serão APAGADOS permanentemente da árvore.")) {
-                    return;
-                }
-
-                const res = await Api.fetch('delete_group', { group_id: this.editingGroupId }, 'POST');
-                if (res.status === 'success') {
-                    this.closeEditGroupModal();
-                    this.showToast("Grupo excluído com sucesso!");
-                    
-                    const parentId = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1].id : null;
-                    this.loadDirectoryLevel(parentId);
                 } else {
                     this.showToast(res.message, "error");
                 }
@@ -618,16 +511,21 @@
                 }
             },
 
-            async continueChat() {
-                if (!this.currentStudyNode) return;
-                const targetNode = this.currentStudyNode;
+            // NOVA FUNÇÃO: Derivar a partir de qualquer nó (mensagem)
+            async deriveFromNode(nodeId) {
+                if (!nodeId) return;
                 
-                await Api.fetch('submit_review', { node_id: targetNode }, 'POST');
+                // Se o usuário clicou em derivar estando na tela de estudo e esse nó faz parte do estudo atual
+                // Garante que ele ganhe o XP do que leu antes de ir pra aba explorar.
+                if (!document.getElementById('view-study').classList.contains('hidden-app') && this.currentStudyNode) {
+                     await Api.fetch('submit_review', { node_id: this.currentStudyNode }, 'POST');
+                     this.showToast("+10 XP Computado antes de derivar!", "xp");
+                }
                 
                 this.isDeriving = true;
-                this.derivationBaseId = targetNode;
+                this.derivationBaseId = nodeId;
                 this.switchTab('explore');
-                this.loadExplorePath(targetNode);
+                this.loadExplorePath(nodeId);
             },
 
             async finishChat() {
@@ -747,6 +645,7 @@
                 setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
             },
 
+            // ATUALIZADO: Incluído o menu de ação flutuante com Derivar e Áudio
             createMessageHTML(node, isBase = false) {
                 const isPerson1 = node.speaker === 1;
                 const alignClass = isPerson1 ? 'justify-end' : 'justify-start';
@@ -754,17 +653,32 @@
                 const bubbleClass = isPerson1 ? 'chat-bubble-1 text-white' : 'chat-bubble-2 text-slate-100';
                 const author = isPerson1 ? 'Personagem 1' : 'Personagem 2'; 
                 
+                // Posição inteligente dos botões laterais (não quebra em telas menores)
+                const actionMenuPosition = isPerson1 ? 'right-full mr-2' : 'left-full ml-2';
+                
                 return `
-                    <div class="flex ${alignClass} mb-4 animate-fade-in">
-                        <div class="max-w-[85%] md:max-w-[75%] flex flex-col relative group">
+                    <div class="flex ${alignClass} mb-4 animate-fade-in w-full">
+                        <div class="max-w-[80%] md:max-w-[70%] flex flex-col relative group">
                             <span class="text-[10px] text-slate-500 mb-1 font-semibold uppercase tracking-wider ${isPerson1 ? 'text-right' : 'text-left'}">${author}</span>
-                            <div class="${bubbleClass} ${baseStyles} rounded-[1.2rem] ${isPerson1 ? 'rounded-br-[0.3rem]' : 'rounded-bl-[0.3rem]'} p-3.5 md:p-4 text-sm md:text-base leading-relaxed break-words transition-all border ${isBase ? 'border-transparent' : (isPerson1 ? 'border-blue-500/50' : 'border-slate-500/50')}">
-                                ${node.content}
+                            
+                            <!-- Container relativo para manter a bolha e os botões alinhados -->
+                            <div class="relative flex items-end ${isPerson1 ? 'flex-row-reverse' : 'flex-row'}">
+                                
+                                <div class="${bubbleClass} ${baseStyles} rounded-[1.2rem] ${isPerson1 ? 'rounded-br-[0.3rem]' : 'rounded-bl-[0.3rem]'} p-3.5 md:p-4 text-sm md:text-base leading-relaxed break-words transition-all border ${isBase ? 'border-transparent' : (isPerson1 ? 'border-blue-500/50' : 'border-slate-500/50')}">
+                                    ${node.content}
+                                </div>
+                                
+                                <!-- Menu de Ações Flutuante -->
+                                <div class="absolute bottom-0 ${actionMenuPosition} flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/80 backdrop-blur-sm px-2 py-1.5 rounded-full border border-slate-700 shadow-sm shrink-0">
+                                    <button onclick="app.deriveFromNode(${node.id})" class="text-slate-400 hover:text-emerald-400 p-1.5 transition-colors flex items-center justify-center" title="Derivar a partir daqui">
+                                        <i class="fas fa-code-branch"></i>
+                                    </button>
+                                    <button onclick="Api.generateAudio(${node.id})" class="text-slate-400 hover:text-blue-400 p-1.5 transition-colors flex items-center justify-center" title="Ouvir áudio">
+                                        <i class="fas fa-volume-up"></i>
+                                    </button>
+                                </div>
+
                             </div>
-                            <!-- Botão de Audio -->
-                            <button onclick="Api.generateAudio(${node.id})" class="absolute bottom-1 ${isPerson1 ? '-left-8' : '-right-8'} text-slate-500 hover:text-blue-400 transition opacity-0 group-hover:opacity-100 p-2">
-                                <i class="fas fa-volume-up"></i>
-                            </button>
                         </div>
                     </div>
                 `;
