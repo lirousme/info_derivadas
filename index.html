@@ -18,7 +18,7 @@
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
         .hidden-app { display: none !important; }
         .nav-btn.active { color: #60a5fa; border-bottom: 2px solid #60a5fa; }
-        input[type="text"], input[type="email"], input[type="password"] { font-size: 16px !important; }
+        input[type="text"], input[type="email"], input[type="password"], textarea { font-size: 16px !important; }
     </style>
 </head>
 <body class="flex flex-col font-sans overflow-hidden w-full max-w-full">
@@ -76,7 +76,7 @@
             </button>
         </div>
 
-        <!-- Abas internas da Pasta de Chats (Só aparecem dentro de um grupo tipo 'chat') -->
+        <!-- Abas internas da Pasta de Chats -->
         <div id="chat-group-tabs" class="hidden-app flex px-4 gap-4 md:gap-6 text-sm font-medium text-slate-400 overflow-x-auto no-scrollbar border-t border-slate-800 pt-2">
             <button id="tab-study" class="nav-btn pb-3 transition whitespace-nowrap active" onclick="app.switchTab('study')">
                 <i class="fas fa-brain mr-1"></i> Fila de Estudo
@@ -142,7 +142,7 @@
         </div>
     </footer>
 
-    <!-- Footer Estudo (Atualizado sem o botão Derivar) -->
+    <!-- Footer Estudo -->
     <footer id="footer-study" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto text-center flex flex-col gap-3">
             <p class="text-sm text-slate-300 font-semibold">Leitura concluída? Conquiste XP.</p>
@@ -222,12 +222,36 @@
                     <button onclick="app.submitDeleteGroup()" class="w-full py-2 rounded-lg bg-red-500/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400 font-bold transition flex justify-center items-center gap-2">
                         <i class="fas fa-trash-alt"></i> Excluir Diretório
                     </button>
-                    <!-- AVISO ATUALIZADO AQUI -->
                     <p class="text-[10px] text-slate-500 text-center mt-2">Atenção: Excluirá todas as subpastas. Chats não vinculados a outros grupos também serão excluídos permanentemente da árvore.</p>
                 </div>
                 <div class="flex gap-2 mt-4">
                     <button onclick="app.closeEditGroupModal()" class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition">Cancelar</button>
                     <button onclick="app.submitEditGroup()" class="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-lg">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar/Excluir Mensagem -->
+    <div id="modal-edit-message" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 hidden-app">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-4"><i class="fas fa-pen text-blue-400 mr-2"></i>Editar Mensagem</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Conteúdo</label>
+                    <textarea id="edit-message-text" rows="4" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none resize-none shadow-inner"></textarea>
+                </div>
+                
+                <div class="pt-4 border-t border-slate-700">
+                    <button onclick="app.submitDeleteMessage()" class="w-full py-2 rounded-lg bg-red-500/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400 font-bold transition flex justify-center items-center gap-2">
+                        <i class="fas fa-trash-alt"></i> Excluir Mensagem
+                    </button>
+                    <p class="text-[10px] text-slate-500 text-center mt-2 px-2">Atenção: Excluir esta mensagem também apagará todas as outras mensagens que derivaram dela (seus "galhos").</p>
+                </div>
+
+                <div class="flex gap-2 mt-4">
+                    <button onclick="app.closeEditMessageModal()" class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition">Cancelar</button>
+                    <button onclick="app.submitEditMessage()" class="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-lg">Salvar Alterações</button>
                 </div>
             </div>
         </div>
@@ -327,8 +351,9 @@
             currentStudyNode: null,
             editingGroupId: null,
             
-            // Controle do menu flutuante ativo
+            // Controle de Menus e Edição de Mensagem
             activeMenuNodeId: null,
+            editingMessageId: null,
 
             init() {
                 this.bindEvents();
@@ -354,7 +379,10 @@
                 });
 
                 // Listener global para fechar o menu flutuante ao clicar fora
-                document.addEventListener('click', () => {
+                document.addEventListener('click', (e) => {
+                    // Impede o fechamento se o clique foi dentro do próprio menu
+                    if (e.target.closest(`[id^="action-menu-"]`)) return;
+
                     if (this.activeMenuNodeId) {
                         const menu = document.getElementById(`action-menu-${this.activeMenuNodeId}`);
                         if (menu) {
@@ -387,10 +415,8 @@
 
             // Função para gerenciar a exibição do menu de ações ao clicar na bolha
             toggleActionMenu(event, nodeId) {
-                // Impede que o clique global feche o menu instantaneamente ao tentar abrir
                 event.stopPropagation();
                 
-                // Fecha o menu aberto anteriormente (se for diferente do atual)
                 if (this.activeMenuNodeId && this.activeMenuNodeId !== nodeId) {
                     const prevMenu = document.getElementById(`action-menu-${this.activeMenuNodeId}`);
                     if (prevMenu) {
@@ -403,18 +429,112 @@
                 if (menu) {
                     const isHidden = menu.classList.contains('opacity-0');
                     if (isHidden) {
-                        // Abre o novo menu
                         menu.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
                         menu.classList.add('opacity-100', 'pointer-events-auto', 'scale-100');
                         this.activeMenuNodeId = nodeId;
                     } else {
-                        // Fecha se clicar na mesma bolha novamente
                         menu.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
                         menu.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
                         this.activeMenuNodeId = null;
                     }
                 }
             },
+
+            // --- LÓGICA DE EDIÇÃO/EXCLUSÃO DE MENSAGENS ---
+
+            openEditMessageModal(nodeId) {
+                this.editingMessageId = nodeId;
+                
+                let content = null;
+                // 1. Tenta achar na memória do array chatPath
+                const node = this.chatPath.find(n => n.id == nodeId);
+                
+                if (node) {
+                    content = node.content;
+                } else {
+                    // 2. Resgate via DOM (Plano B seguro caso falhe na memória em abas secundárias)
+                    const bubble = document.getElementById(`bubble-content-${nodeId}`);
+                    if (bubble) {
+                        content = bubble.innerText.trim();
+                    }
+                }
+
+                if (content !== null) {
+                    document.getElementById('edit-message-text').value = content;
+                    document.getElementById('modal-edit-message').classList.remove('hidden-app');
+                    
+                    // Fecha o menu flutuante atual após abrir o modal
+                    if (this.activeMenuNodeId) {
+                        const menu = document.getElementById(`action-menu-${this.activeMenuNodeId}`);
+                        if (menu) {
+                            menu.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
+                            menu.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+                        }
+                        this.activeMenuNodeId = null;
+                    }
+                } else {
+                    this.showToast("Erro ao encontrar o texto da mensagem", "error");
+                }
+            },
+
+            closeEditMessageModal() {
+                this.editingMessageId = null;
+                document.getElementById('modal-edit-message').classList.add('hidden-app');
+            },
+
+            async submitEditMessage() {
+                const newText = document.getElementById('edit-message-text').value.trim();
+                if (!newText || !this.editingMessageId) return;
+
+                const res = await Api.fetch('edit_node', { 
+                    node_id: this.editingMessageId, 
+                    content: newText 
+                }, 'POST');
+
+                if (res.status === 'success') {
+                    this.closeEditMessageModal();
+                    this.showToast("Mensagem atualizada com sucesso!");
+                    
+                    // Verifica em qual aba o usuário está para atualizar a tela correta
+                    if (!document.getElementById('view-explore').classList.contains('hidden-app')) {
+                        this.loadExplorePath(this.currentNodeId);
+                    } else {
+                        this.startStudySession();
+                    }
+                } else {
+                    this.showToast(res.message, "error");
+                }
+            },
+
+            async submitDeleteMessage() {
+                if (!this.editingMessageId) return;
+                
+                if (!confirm("Tem certeza que deseja excluir esta mensagem?\n\nATENÇÃO: Todas as mensagens que vieram depois dela (toda a ramificação) também serão apagadas permanentemente!")) {
+                    return;
+                }
+
+                const res = await Api.fetch('delete_node', { node_id: this.editingMessageId }, 'POST');
+                
+                if (res.status === 'success') {
+                    this.closeEditMessageModal();
+                    this.showToast("Mensagem e derivações excluídas!");
+                    
+                    // Verifica em qual aba o usuário está para atualizar a tela correta
+                    if (!document.getElementById('view-explore').classList.contains('hidden-app')) {
+                        if(res.parent_id) {
+                            this.loadExplorePath(res.parent_id);
+                        } else {
+                            this.loadExplorePath(null);
+                        }
+                    } else {
+                        // Se estiver estudando, avança para a próxima
+                        this.startStudySession();
+                    }
+                } else {
+                    this.showToast(res.message, "error");
+                }
+            },
+
 
             // --- SISTEMA DE DIRETÓRIOS ---
             
@@ -630,6 +750,9 @@
 
                 const pathRes = await Api.fetch('get_chat_path', { node_id: this.currentStudyNode });
                 const path = pathRes.path || [];
+                
+                // CRÍTICO: Salvando o caminho na memória caso o usuário queira editar uma mensagem lendo na fila de estudo!
+                this.chatPath = path;
 
                 container.innerHTML = `
                     <div class="mb-6 pb-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-[#0f172a] z-10 pt-2 shadow-sm">
@@ -693,7 +816,7 @@
             },
 
             async loadExplorePath(nodeId) {
-                // Reseta qualquer menu aberto ao recarregar a tela
+                // Reseta menu ativo
                 this.activeMenuNodeId = null; 
                 this.currentNodeId = nodeId;
                 
@@ -788,7 +911,7 @@
                 setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
             },
 
-            // ATUALIZADO: Menu só aparece mediante clique
+            // Adicionado "id" no balão do texto para garantir o resgate no Plano B
             createMessageHTML(node, isBase = false) {
                 const isPerson1 = node.speaker === 1;
                 const alignClass = isPerson1 ? 'justify-end' : 'justify-start';
@@ -797,7 +920,7 @@
                 const author = isPerson1 ? 'Personagem 1' : 'Personagem 2'; 
                 
                 // Calcula de que lado a pílula flutuante vai abrir
-                const actionMenuPosition = isPerson1 ? '-left-20 md:-left-24' : '-right-20 md:-right-24';
+                const actionMenuPosition = isPerson1 ? '-left-[110px] md:-left-[120px]' : '-right-[110px] md:-right-[120px]';
                 
                 return `
                     <div class="flex ${alignClass} mb-4 animate-fade-in w-full">
@@ -806,15 +929,17 @@
                             
                             <div class="relative flex items-end ${isPerson1 ? 'flex-row-reverse' : 'flex-row'}">
                                 
-                                <!-- Adicionado onclick para abrir o menu e classes de cursor/hover -->
-                                <div onclick="app.toggleActionMenu(event, ${node.id})" class="${bubbleClass} ${baseStyles} rounded-[1.2rem] ${isPerson1 ? 'rounded-br-[0.3rem]' : 'rounded-bl-[0.3rem]'} p-3.5 md:p-4 text-sm md:text-base leading-relaxed break-words transition-all border ${isBase ? 'border-transparent' : (isPerson1 ? 'border-blue-500/50' : 'border-slate-500/50')} w-full cursor-pointer hover:brightness-110 active:scale-[0.98]">
+                                <div id="bubble-content-${node.id}" onclick="app.toggleActionMenu(event, ${node.id})" class="${bubbleClass} ${baseStyles} rounded-[1.2rem] ${isPerson1 ? 'rounded-br-[0.3rem]' : 'rounded-bl-[0.3rem]'} p-3.5 md:p-4 text-sm md:text-base leading-relaxed break-words transition-all border ${isBase ? 'border-transparent' : (isPerson1 ? 'border-blue-500/50' : 'border-slate-500/50')} w-full cursor-pointer hover:brightness-110 active:scale-[0.98]">
                                     ${node.content}
                                 </div>
                                 
-                                <!-- Menu de Ações Flutuante (Inicia escondido e sem pointer-events) -->
-                                <div id="action-menu-${node.id}" class="absolute bottom-0 ${actionMenuPosition} flex items-center gap-1 opacity-0 pointer-events-none scale-95 transition-all duration-200 bg-slate-800/90 backdrop-blur-sm px-2 py-1.5 rounded-full border border-slate-700 shadow-lg shrink-0 z-10">
+                                <!-- Menu de Ações Flutuante -->
+                                <div id="action-menu-${node.id}" class="absolute bottom-0 ${actionMenuPosition} flex items-center gap-1 opacity-0 pointer-events-none scale-95 transition-all duration-200 bg-slate-800/95 backdrop-blur-sm px-2 py-1.5 rounded-full border border-slate-600 shadow-xl shrink-0 z-10">
                                     <button onclick="app.deriveFromNode(${node.id})" class="text-slate-400 hover:text-emerald-400 p-1.5 transition-colors flex items-center justify-center" title="Derivar a partir daqui">
                                         <i class="fas fa-code-branch"></i>
+                                    </button>
+                                    <button onclick="app.openEditMessageModal(${node.id})" class="text-slate-400 hover:text-yellow-400 p-1.5 transition-colors flex items-center justify-center" title="Editar Mensagem">
+                                        <i class="fas fa-edit"></i>
                                     </button>
                                     <button onclick="Api.generateAudio(${node.id})" class="text-slate-400 hover:text-blue-400 p-1.5 transition-colors flex items-center justify-center" title="Ouvir áudio">
                                         <i class="fas fa-volume-up"></i>
