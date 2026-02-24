@@ -3,43 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Info Derivadas</title>
+    <title>Info Derivadas - Diretórios</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
-            --sat: env(safe-area-inset-top);
-            --sab: env(safe-area-inset-bottom);
-        }
-
-        body { 
-            background-color: #0f172a; 
-            color: #e2e8f0; 
-            height: 100dvh; 
-        }
-
+        :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
+        body { background-color: #0f172a; color: #e2e8f0; height: 100dvh; }
         .pb-safe { padding-bottom: max(var(--sab), 1rem); }
         .pt-safe { padding-top: max(var(--sat), 0.5rem); }
-        
         .chat-bubble-1 { background-color: #2563eb; }
         .chat-bubble-2 { background-color: #334155; }
-        
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px;}
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-
         .hidden-app { display: none !important; }
         .nav-btn.active { color: #60a5fa; border-bottom: 2px solid #60a5fa; }
-
-        input[type="text"], input[type="email"], input[type="password"] {
-            font-size: 16px !important;
-        }
+        input[type="text"], input[type="email"], input[type="password"] { font-size: 16px !important; }
     </style>
 </head>
 <body class="flex flex-col font-sans overflow-hidden w-full max-w-full">
 
     <div id="toast-notification" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-emerald-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-emerald-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]">
-        <i class="fas fa-check-circle mr-2 text-lg" id="toast-icon"></i> <span class="font-bold text-sm" id="toast-message">Salvo nos Estudos</span>
+        <i class="fas fa-check-circle mr-2 text-lg" id="toast-icon"></i> <span class="font-bold text-sm" id="toast-message">Notificação</span>
     </div>
 
     <!-- TELA DE LOGIN / CADASTRO -->
@@ -48,7 +33,6 @@
             <div class="text-center mb-8">
                 <i class="fas fa-network-wired text-5xl text-blue-500 mb-3"></i>
                 <h1 class="text-2xl font-bold text-white">Info Derivadas</h1>
-                <p class="text-slate-400 text-sm mt-1" id="auth-subtitle">Faça login para acessar seus pensamentos.</p>
             </div>
             <form id="auth-form" class="space-y-4">
                 <div id="register-fields" class="hidden-app space-y-4">
@@ -74,48 +58,73 @@
         </div>
     </div>
 
-    <!-- Header do App -->
-    <header id="app-header" class="hidden-app flex-none bg-slate-900/80 backdrop-blur-md shadow-md flex flex-col z-20 border-b border-slate-700 pt-safe">
+    <!-- HEADER DO APP (Agora focado nos Breadcrumbs de Diretório) -->
+    <header id="app-header" class="hidden-app flex-none bg-slate-900/90 backdrop-blur-md shadow-md flex flex-col z-20 border-b border-slate-700 pt-safe">
         <div class="p-3 md:p-4 flex justify-between items-center">
-            <h1 class="text-base md:text-lg font-bold text-blue-400 flex items-center cursor-pointer" onclick="app.switchTab('explore'); app.goHome();">
-                <i class="fas fa-network-wired mr-2"></i> Info Derivadas
-            </h1>
-            <div class="flex gap-4 text-slate-300 items-center">
-                <span id="user-greeting" class="text-sm text-slate-400 hidden md:block"></span>
-                <button onclick="Auth.logout()" class="hover:text-red-400 transition ml-2" title="Sair do sistema">
-                    <i class="fas fa-sign-out-alt text-lg md:text-xl"></i>
-                </button>
+            <div class="flex flex-col gap-1 overflow-hidden">
+                <h1 class="text-xs md:text-sm font-bold text-slate-500 flex items-center">
+                    <i class="fas fa-network-wired mr-2 text-blue-400"></i> Meu Conhecimento
+                </h1>
+                <!-- Breadcrumbs Dinâmicos -->
+                <div id="breadcrumbs" class="flex items-center gap-2 text-sm md:text-base text-slate-300 overflow-x-auto no-scrollbar whitespace-nowrap">
+                    <!-- Preenchido via JS -->
+                </div>
             </div>
-        </div>
-        <!-- Abas de Navegação -->
-        <div class="flex px-4 gap-4 md:gap-6 text-sm font-medium text-slate-400 overflow-x-auto no-scrollbar">
-            <button id="tab-explore" class="nav-btn active pb-3 transition whitespace-nowrap" onclick="app.switchTab('explore')">
-                <i class="fas fa-plus-circle mr-1"></i> Criar / Derivar
+            
+            <button onclick="Auth.logout()" class="hover:text-red-400 transition ml-4 shrink-0 bg-slate-800 w-10 h-10 rounded-full flex items-center justify-center border border-slate-700" title="Sair">
+                <i class="fas fa-sign-out-alt"></i>
             </button>
-            <button id="tab-study" class="nav-btn pb-3 transition whitespace-nowrap" onclick="app.switchTab('study')">
+        </div>
+
+        <!-- Abas internas da Pasta de Chats (Só aparecem dentro de um grupo tipo 'chat') -->
+        <div id="chat-group-tabs" class="hidden-app flex px-4 gap-4 md:gap-6 text-sm font-medium text-slate-400 overflow-x-auto no-scrollbar border-t border-slate-800 pt-2">
+            <button id="tab-study" class="nav-btn pb-3 transition whitespace-nowrap active" onclick="app.switchTab('study')">
                 <i class="fas fa-brain mr-1"></i> Fila de Estudo
                 <span id="study-badge" class="hidden-app ml-1 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">0</span>
             </button>
-            <!-- NOVA ABA DE PERFIL -->
-            <button id="tab-profile" class="nav-btn pb-3 transition whitespace-nowrap" onclick="app.switchTab('profile')">
-                <i class="fas fa-user-circle mr-1"></i> Meu Perfil
+            <button id="tab-explore" class="nav-btn pb-3 transition whitespace-nowrap" onclick="app.switchTab('explore')">
+                <i class="fas fa-plus-circle mr-1"></i> Explorar & Derivar
             </button>
         </div>
     </header>
 
-    <!-- VIEWS PRINCIPAIS -->
-    <main id="view-explore" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
-    <main id="view-study" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
-    <main id="view-profile" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-4 scroll-smooth bg-slate-900"></main>
+    <!-- MAIN VIEWS -->
+    
+    <!-- View 1: Navegador de Diretórios (Início) -->
+    <main id="view-directory" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth bg-slate-900">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2" id="dir-title">
+                    <i class="fas fa-folder-open text-blue-400"></i> Diretório Raiz
+                </h2>
+                <button onclick="app.openModalGroup()" class="bg-blue-600/20 hover:bg-blue-500/40 text-blue-400 border border-blue-500/50 px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                    <i class="fas fa-folder-plus"></i> Novo Grupo
+                </button>
+            </div>
+            
+            <div id="directory-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </main>
 
-    <!-- FOOTER CRIAR -->
+    <!-- View 2: Fila de Estudos (Dentro da Pasta de Chat) -->
+    <main id="view-study" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
+    
+    <!-- View 3: Criação de Chats (Dentro da Pasta de Chat) -->
+    <main id="view-explore" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
+
+
+    <!-- FOOTERS -->
+    
+    <!-- Footer Explorar/Criar -->
     <footer id="footer-explore" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto flex flex-col gap-2">
             <div id="context-indicator" class="text-xs text-slate-400 mb-1 px-1 hidden-app justify-between items-center">
                 <span class="flex items-center"><i class="fas fa-reply fa-rotate-180 mr-1 text-blue-400"></i> Construindo ramo...</span>
                 <div class="flex items-center gap-3">
                     <button id="btn-finish-chat" onclick="app.finishChat()" class="bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 border border-blue-500/50 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-                        <i class="fas fa-save"></i> Finalizar & Criar Chat
+                        <i class="fas fa-save"></i> Consolidar Raciocínio
                     </button>
                     <span id="speaker-indicator" class="font-bold text-blue-300 bg-slate-900 px-2 py-1 rounded truncate max-w-[150px] text-right">T: P1</span>
                 </div>
@@ -125,8 +134,7 @@
                 <button title="Privacidade" class="text-slate-400 hover:text-white p-2 rounded-lg transition shrink-0" id="btn-privacy">
                     <i class="fas fa-lock text-red-400 text-lg" id="icon-privacy"></i>
                 </button>
-                <input type="text" id="message-input" placeholder="Digite sua mensagem..." autocomplete="off"
-                    class="flex-1 bg-slate-900 text-white px-4 py-3 md:py-4 rounded-2xl border border-slate-600 focus:outline-none focus:border-blue-500 shadow-inner">
+                <input type="text" id="message-input" placeholder="Digite sua mensagem..." autocomplete="off" class="flex-1 bg-slate-900 text-white px-4 py-3 md:py-4 rounded-2xl border border-slate-600 focus:outline-none focus:border-blue-500 shadow-inner">
                 <button id="btn-send" class="bg-blue-600 text-white w-12 h-12 md:w-14 md:h-14 rounded-full font-bold hover:bg-blue-500 transition shadow-lg flex items-center justify-center shrink-0">
                     <i class="fas fa-paper-plane"></i>
                 </button>
@@ -134,46 +142,76 @@
         </div>
     </footer>
 
-    <!-- FOOTER ESTUDO -->
+    <!-- Footer Estudo -->
     <footer id="footer-study" class="hidden-app flex-none bg-slate-800 border-t border-slate-700 w-full z-20 pb-safe">
         <div class="p-3 md:p-4 max-w-4xl mx-auto text-center flex flex-col gap-3">
-            <p class="text-sm text-slate-300 font-semibold">Leitura concluída? Escolha o próximo passo:</p>
+            <p class="text-sm text-slate-300 font-semibold">Leitura concluída? Conquiste XP.</p>
             <div class="flex gap-2 justify-center">
-                <button onclick="app.submitStudy()" class="flex-1 text-sm md:text-base bg-emerald-900/40 hover:bg-emerald-800/80 text-emerald-300 border border-emerald-700/50 py-3 rounded-xl font-medium transition flex justify-center items-center gap-1 md:gap-2">
-                    <i class="fas fa-check-circle"></i> Apenas Revisar
+                <button onclick="app.submitStudy()" class="flex-1 text-sm md:text-base bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                    <i class="fas fa-bolt text-yellow-300"></i> Absorvido (+10 XP)
                 </button>
-                <button onclick="app.continueChat()" class="flex-1 text-sm md:text-base bg-blue-900/60 hover:bg-blue-800/80 text-blue-200 border border-blue-500/50 py-3 rounded-xl font-medium transition shadow-[0_0_15px_rgba(59,130,246,0.2)] flex justify-center items-center gap-1 md:gap-2">
-                    <i class="fas fa-code-branch"></i> Derivar Novo Chat
+                <button onclick="app.continueChat()" class="flex-1 text-sm md:text-base bg-blue-900/60 hover:bg-blue-800/80 text-blue-200 border border-blue-500/50 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2">
+                    <i class="fas fa-code-branch"></i> Derivar Novo
                 </button>
             </div>
         </div>
     </footer>
 
+    <!-- Modal Criação de Grupo -->
+    <div id="modal-group" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 hidden-app">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl w-full max-w-sm">
+            <h3 class="text-xl font-bold text-white mb-4">Criar Novo Grupo</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Nome do Diretório/Grupo</label>
+                    <input type="text" id="new-group-name" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none" placeholder="Ex: Matemática, Receitas...">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Tipo de Conteúdo</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="group-type" value="folder" class="peer hidden" checked>
+                            <div class="text-center p-3 rounded-xl border border-slate-600 bg-slate-900 text-slate-400 peer-checked:bg-blue-600/20 peer-checked:border-blue-500 peer-checked:text-blue-300 transition text-sm">
+                                <i class="fas fa-folder-tree block mb-1 text-lg"></i>
+                                Outros Grupos
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="group-type" value="chat" class="peer hidden">
+                            <div class="text-center p-3 rounded-xl border border-slate-600 bg-slate-900 text-slate-400 peer-checked:bg-emerald-600/20 peer-checked:border-emerald-500 peer-checked:text-emerald-300 transition text-sm">
+                                <i class="fas fa-comments block mb-1 text-lg"></i>
+                                Lista de Chats
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-6">
+                    <button onclick="document.getElementById('modal-group').classList.add('hidden-app')" class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition">Cancelar</button>
+                    <button onclick="app.submitCreateGroup()" class="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-lg">Criar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script>
-        // --- AUTENTICAÇÃO ---
+        // --- AUTENTICAÇÃO --- (Mantida com os mesmos comportamentos)
         const Auth = {
             tokenKey: 'info_derivadas_token',
             isLoginMode: true,
 
-            init() {
-                this.bindEvents();
-                this.checkSession();
-            },
-
+            init() { this.bindEvents(); this.checkSession(); },
             bindEvents() {
                 document.getElementById('toggle-auth-mode').addEventListener('click', () => this.toggleMode());
                 document.getElementById('auth-form').addEventListener('submit', (e) => this.handleSubmit(e));
             },
-
             toggleMode() {
                 this.isLoginMode = !this.isLoginMode;
                 document.getElementById('register-fields').classList.toggle('hidden-app', this.isLoginMode);
                 document.getElementById('auth-submit-btn').textContent = this.isLoginMode ? 'Entrar' : 'Criar Conta';
-                document.getElementById('toggle-auth-mode').textContent = this.isLoginMode ? 'Não tem uma conta? Cadastre-se' : 'Já tem uma conta? Entre';
-                document.getElementById('auth-subtitle').textContent = this.isLoginMode ? 'Faça login para acessar seus pensamentos.' : 'Crie sua conta. Tudo será criptografado.';
+                document.getElementById('toggle-auth-mode').textContent = this.isLoginMode ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entre';
                 document.getElementById('auth-error').classList.add('hidden-app');
             },
-
             async handleSubmit(e) {
                 e.preventDefault();
                 const username = document.getElementById('auth-username').value;
@@ -183,106 +221,79 @@
                 const endpoint = this.isLoginMode ? 'login' : 'register';
                 const payload = this.isLoginMode ? { username, password } : { username, email, password };
 
-                try {
-                    const res = await fetch(`auth.php?action=${endpoint}`, {
-                        method: 'POST',
-                        body: JSON.stringify(payload),
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    const data = await res.json();
-
-                    if (data.status === 'success') {
-                        localStorage.setItem(this.tokenKey, data.token);
-                        this.showApp(data.user.username);
-                    } else {
-                        this.showError(data.message);
-                    }
-                } catch (err) {
-                    this.showError("Erro de conexão com o servidor.");
+                const res = await Api.fetch(`auth.php?action=${endpoint}`, payload, 'POST');
+                if (res.status === 'success') {
+                    localStorage.setItem(this.tokenKey, res.token);
+                    this.showApp();
+                } else {
+                    document.getElementById('auth-error').textContent = res.message;
+                    document.getElementById('auth-error').classList.remove('hidden-app');
                 }
             },
-
             async checkSession() {
-                const token = localStorage.getItem(this.tokenKey);
+                const token = this.getToken();
                 if (!token) return;
-
-                try {
-                    const res = await fetch('auth.php?action=verify', { headers: { 'Authorization': `Bearer ${token}` } });
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        this.showApp(data.user.username);
-                    } else {
-                        localStorage.removeItem(this.tokenKey);
-                    }
-                } catch(e) { console.error(e); }
+                const res = await Api.fetch('auth.php?action=verify');
+                if (res.status === 'success') this.showApp();
+                else localStorage.removeItem(this.tokenKey);
             },
-
             async logout() {
-                const token = localStorage.getItem(this.tokenKey);
-                if(token) {
-                    await fetch('auth.php?action=logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-                }
+                await Api.fetch('auth.php?action=logout', {}, 'POST');
                 localStorage.removeItem(this.tokenKey);
                 location.reload();
             },
-
-            showApp(username) {
+            showApp() {
                 document.getElementById('auth-screen').classList.add('hidden-app');
                 document.getElementById('app-header').classList.remove('hidden-app');
-                document.getElementById('user-greeting').textContent = `Olá, ${username}`;
                 app.init(); 
             },
-
-            showError(msg) {
-                const errDiv = document.getElementById('auth-error');
-                errDiv.textContent = msg;
-                errDiv.classList.remove('hidden-app');
-            },
-
             getToken() { return localStorage.getItem(this.tokenKey); }
         };
 
-        // --- API COMMUNICATION ---
+        // --- API COMMUNICATIONS ---
         class Api {
             static getHeaders() { return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Auth.getToken()}` }; }
-            static async fetch(action, params = {}, method = 'GET') {
-                const url = new URL('api.php', window.location.href);
-                url.searchParams.append('action', action);
+            static async fetch(endpoint, params = {}, method = 'GET') {
+                const isAuth = endpoint.startsWith('auth.php');
+                const url = new URL(isAuth ? endpoint : 'api.php', window.location.href);
+                if (!isAuth) url.searchParams.append('action', endpoint);
+                
                 try {
                     if (method === 'GET') {
                         Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
                         const res = await fetch(url, { headers: this.getHeaders() });
                         if(res.status === 401) Auth.logout();
-                        return res.json();
+                        return await res.json();
                     } else {
                         const res = await fetch(url, { method: 'POST', body: JSON.stringify(params), headers: this.getHeaders() });
                         if(res.status === 401) Auth.logout();
-                        return res.json();
+                        return await res.json();
                     }
-                } catch(e) { return { error: true }; }
+                } catch(e) { return { status: 'error', message: 'Erro de conexão' }; }
             }
             static async generateAudio(nodeId) { return (await fetch(`fish_audio.php?id=${nodeId}`, { headers: this.getHeaders() })).json(); }
         }
 
-        // --- APP STATE & LOGIC ---
+        // --- LÓGICA DO APP (DIRETÓRIOS E ÁRVORES) ---
         const app = {
-            currentMode: 'explore', 
+            // Navegação de Diretórios
+            dirPath: [], // Array de {id, name, type}
+            
+            // Lógica de Criação de Chat
             currentNodeId: null, 
             currentSpeaker: 1,   
             isPrivate: true,
             chatPath: [],        
-            
             isDeriving: false, 
-            derivationBaseId: null, // Guarda o ID do ponto exato onde a cópia terminou
+            derivationBaseId: null, 
             
+            // Fila de Estudos
             studyQueue: [],
             currentStudyNode: null,
-            toastTimeout: null,
 
             init() {
                 this.bindEvents();
-                this.switchTab('explore');
-                this.checkStudyQueue();
+                this.loadDirectoryLevel(null); // Carrega raiz
             },
 
             bindEvents() {
@@ -309,79 +320,263 @@
                 const icon = document.getElementById('toast-icon');
                 document.getElementById('toast-message').textContent = message;
                 
-                if (type === 'info') {
-                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-blue-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-blue-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]';
-                    icon.className = 'fas fa-info-circle mr-2 text-lg';
-                } else if(type === 'error') {
-                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-red-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-red-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]';
+                if(type === 'error') {
+                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-red-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-red-500 z-[100] flex items-center transition-all duration-500 opacity-100 translate-y-0';
                     icon.className = 'fas fa-exclamation-triangle mr-2 text-lg';
+                } else if(type === 'xp') {
+                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-yellow-500/95 text-slate-900 px-5 py-2.5 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.5)] border border-yellow-400 z-[100] flex items-center transition-all duration-500 opacity-100 translate-y-0';
+                    icon.className = 'fas fa-bolt mr-2 text-lg';
                 } else {
-                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-emerald-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-emerald-500 z-[100] flex items-center transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]';
+                    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 bg-emerald-600/95 text-white px-5 py-2.5 rounded-full shadow-lg border border-emerald-500 z-[100] flex items-center transition-all duration-500 opacity-100 translate-y-0';
                     icon.className = 'fas fa-check-circle mr-2 text-lg';
                 }
 
-                setTimeout(() => {
-                    toast.classList.remove('opacity-0', 'translate-y-[-20px]');
-                    toast.classList.add('opacity-100', 'translate-y-0');
-                }, 10);
-                
-                if(this.toastTimeout) clearTimeout(this.toastTimeout);
-                this.toastTimeout = setTimeout(() => {
-                    toast.classList.remove('opacity-100', 'translate-y-0');
-                    toast.classList.add('opacity-0', 'translate-y-[-20px]');
-                }, 3500);
+                setTimeout(() => { toast.classList.remove('opacity-100', 'translate-y-0'); toast.classList.add('opacity-0', 'translate-y-[-20px]'); }, 3000);
             },
 
-            switchTab(mode) {
-                this.currentMode = mode;
+            // --- SISTEMA DE DIRETÓRIOS ---
+            
+            async loadDirectoryLevel(groupId, groupName = 'Raiz', groupType = 'folder') {
+                // Atualiza o caminho (Breadcrumbs)
+                if (groupId === null) {
+                    this.dirPath = [];
+                } else {
+                    const idx = this.dirPath.findIndex(d => d.id === groupId);
+                    if (idx > -1) {
+                        this.dirPath = this.dirPath.slice(0, idx + 1); // Corta até aqui
+                    } else {
+                        this.dirPath.push({ id: groupId, name: groupName, type: groupType });
+                    }
+                }
                 
-                ['explore', 'study', 'profile'].forEach(m => {
-                    document.getElementById(`tab-${m}`)?.classList.toggle('active', mode === m);
-                    document.getElementById(`view-${m}`)?.classList.toggle('hidden-app', mode !== m);
+                this.renderBreadcrumbs();
+
+                const currentLvl = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1] : {id: null, type: 'folder'};
+
+                // Controle de View
+                document.getElementById('view-directory').classList.add('hidden-app');
+                document.getElementById('view-explore').classList.add('hidden-app');
+                document.getElementById('view-study').classList.add('hidden-app');
+                document.getElementById('footer-explore').classList.add('hidden-app');
+                document.getElementById('footer-study').classList.add('hidden-app');
+                document.getElementById('chat-group-tabs').classList.add('hidden-app');
+
+                if (currentLvl.type === 'folder') {
+                    // É uma pasta de grupos, mostra o GRID
+                    document.getElementById('view-directory').classList.remove('hidden-app');
+                    document.getElementById('dir-title').innerHTML = currentLvl.id === null ? '<i class="fas fa-home text-blue-400"></i> Raiz' : `<i class="fas fa-folder-open text-blue-400"></i> ${currentLvl.name}`;
+                    
+                    const res = await Api.fetch('get_directory', { parent_id: currentLvl.id });
+                    this.renderDirectoryGrid(res.directories || []);
+                } else {
+                    // É um grupo de chats! Mostra o hub de estudos e criação (tabs)
+                    document.getElementById('chat-group-tabs').classList.remove('hidden-app');
+                    this.switchTab('study'); // Vai para estudo por padrão
+                }
+            },
+
+            renderBreadcrumbs() {
+                const container = document.getElementById('breadcrumbs');
+                let html = `<span class="cursor-pointer hover:text-white transition flex items-center" onclick="app.loadDirectoryLevel(null)"><i class="fas fa-home"></i></span>`;
+                
+                this.dirPath.forEach((dir, index) => {
+                    html += `<i class="fas fa-chevron-right text-[10px] text-slate-600"></i>`;
+                    html += `<span class="cursor-pointer hover:text-white transition font-medium truncate max-w-[120px]" onclick="app.loadDirectoryLevel(${dir.id}, '${dir.name}', '${dir.type}')">${dir.name}</span>`;
                 });
+                
+                container.innerHTML = html;
+            },
 
-                document.getElementById('footer-explore').classList.toggle('hidden-app', mode !== 'explore');
+            // Lógica de Cores da Pontuação XP
+            getScoreStyle(score) {
+                if (score === 0) return { icon: 'text-slate-500', bg: 'bg-slate-800 border-slate-700' };
+                if (score < 50) return { icon: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30' };
+                if (score < 150) return { icon: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/30' };
+                if (score < 300) return { icon: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/30' };
+                return { icon: 'text-green-500', bg: 'bg-green-500/10 border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.15)]' };
+            },
+
+            renderDirectoryGrid(dirs) {
+                const grid = document.getElementById('directory-grid');
+                if (dirs.length === 0) {
+                    grid.innerHTML = `
+                        <div class="col-span-full flex flex-col items-center justify-center p-10 text-slate-500 border border-dashed border-slate-700 rounded-2xl">
+                            <i class="fas fa-wind text-4xl mb-3"></i>
+                            <p>Esta pasta está vazia.</p>
+                        </div>`;
+                    return;
+                }
+
+                let html = '';
+                dirs.forEach(dir => {
+                    const isChat = dir.type === 'chat';
+                    const iconClass = isChat ? 'fa-comments' : 'fa-folder';
+                    const style = this.getScoreStyle(dir.score);
+
+                    html += `
+                        <div onclick="app.loadDirectoryLevel(${dir.id}, '${dir.name}', '${dir.type}')" 
+                             class="group cursor-pointer rounded-2xl p-4 border transition-all hover:scale-[1.02] flex items-center justify-between ${style.bg}">
+                            <div class="flex items-center gap-4 overflow-hidden">
+                                <div class="w-12 h-12 rounded-xl bg-slate-900/50 flex items-center justify-center shrink-0">
+                                    <i class="fas ${iconClass} text-2xl ${style.icon} group-hover:scale-110 transition"></i>
+                                </div>
+                                <div class="truncate">
+                                    <h3 class="font-bold text-white text-base truncate">${dir.name}</h3>
+                                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mt-0.5">${isChat ? 'Chats' : 'Pasta'}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end shrink-0 pl-2">
+                                <span class="text-xs text-slate-500 font-bold">XP</span>
+                                <span class="text-lg font-black ${style.icon}">${dir.score}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                grid.innerHTML = html;
+            },
+
+            openModalGroup() {
+                document.getElementById('new-group-name').value = '';
+                document.getElementById('modal-group').classList.remove('hidden-app');
+            },
+
+            async submitCreateGroup() {
+                const name = document.getElementById('new-group-name').value;
+                const type = document.querySelector('input[name="group-type"]:checked').value;
+                const parentId = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1].id : null;
+
+                const res = await Api.fetch('create_group', { parent_id: parentId, name, type }, 'POST');
+                if (res.status === 'success') {
+                    document.getElementById('modal-group').classList.add('hidden-app');
+                    this.loadDirectoryLevel(parentId); // Recarrega
+                } else {
+                    this.showToast(res.message, "error");
+                }
+            },
+
+
+            // --- HUB DO GRUPO DE CHATS (Estudar / Criar) ---
+            
+            switchTab(mode) {
+                // Alterna apenas as abas internas do Hub de Chat
+                document.getElementById('tab-study').classList.toggle('active', mode === 'study');
+                document.getElementById('tab-explore').classList.toggle('active', mode === 'explore');
+                
+                document.getElementById('view-study').classList.toggle('hidden-app', mode !== 'study');
+                document.getElementById('view-explore').classList.toggle('hidden-app', mode !== 'explore');
+                
                 document.getElementById('footer-study').classList.toggle('hidden-app', mode !== 'study');
+                document.getElementById('footer-explore').classList.toggle('hidden-app', mode !== 'explore');
 
-                if (mode === 'explore') {
-                    this.loadExplorePath(this.currentNodeId);
-                } else if (mode === 'study') {
+                if (mode === 'study') {
                     this.startStudySession();
-                } else if (mode === 'profile') {
-                    this.loadProfile();
+                } else if (mode === 'explore') {
+                    this.loadExplorePath(this.currentNodeId);
                 }
             },
 
-            goHome() {
-                this.isDeriving = false;
-                this.derivationBaseId = null;
-                this.loadExplorePath(null);
+            // --- ESTUDO ---
+            async startStudySession() {
+                const currentGroupId = this.dirPath[this.dirPath.length - 1].id;
+                const res = await Api.fetch('get_study_queue', { group_id: currentGroupId });
+                
+                this.studyQueue = res.queue || [];
+                const badge = document.getElementById('study-badge');
+                
+                if (this.studyQueue.length > 0) {
+                    badge.textContent = this.studyQueue.length;
+                    badge.classList.remove('hidden-app');
+                } else {
+                    badge.classList.add('hidden-app');
+                }
+
+                const container = document.getElementById('view-study');
+                const footer = document.getElementById('footer-study');
+
+                if (this.studyQueue.length === 0) {
+                    footer.classList.add('hidden-app');
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full min-h-[60vh] text-slate-500 text-center">
+                            <i class="fas fa-check-double text-6xl mb-4 text-emerald-500/40"></i>
+                            <h2 class="text-xl font-bold text-slate-300 mb-2">Tudo em dia!</h2>
+                            <p class="text-sm max-w-[250px] mx-auto mb-6">Você revisou todos os chats deste grupo. Vá explorar e criar mais ramificações!</p>
+                            <button onclick="app.switchTab('explore')" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-bold">Criar Novos Chats</button>
+                        </div>`;
+                    return;
+                }
+
+                footer.classList.remove('hidden-app');
+                const item = this.studyQueue[0];
+                this.currentStudyNode = item.node_id;
+
+                const pathRes = await Api.fetch('get_chat_path', { node_id: this.currentStudyNode });
+                const path = pathRes.path || [];
+
+                container.innerHTML = `
+                    <div class="mb-6 pb-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-[#0f172a] z-10 pt-2 shadow-sm">
+                        <span class="text-xs md:text-sm text-slate-400 font-semibold truncate"><i class="fas fa-book-reader text-blue-400 mr-2"></i> Absorvendo Conhecimento</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded border border-yellow-500/30 font-bold"><i class="fas fa-bolt"></i> ${item.score} XP</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700 font-bold">Restam: ${this.studyQueue.length}</span>
+                        </div>
+                    </div>
+                `;
+
+                path.forEach(node => { container.innerHTML += this.createMessageHTML(node); });
+                setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
             },
 
-            // --- LÓGICA RÍGIDA DE CRIAÇÃO ---
-            async finishChat() {
-                if (!this.currentNodeId) {
-                    this.goHome();
-                    return;
-                }
-
-                // O NOVO CHAT SÓ É CRIADO SE ELE ADICIONAR ALGO (Atende ao seu requisito)
-                if (this.isDeriving && this.currentNodeId === this.derivationBaseId) {
-                    this.showToast("Adicione uma nova mensagem para criar o chat derivado.", "error");
-                    return;
-                }
-
-                // Registra O NOVO leaf node (que representa o chat 100% novo) nos estudos.
-                const res = await Api.fetch('add_to_study', { node_id: this.currentNodeId }, 'POST');
+            async submitStudy() {
+                if (!this.currentStudyNode) return;
+                document.getElementById('footer-study').classList.add('hidden-app');
+                
+                const res = await Api.fetch('submit_review', { node_id: this.currentStudyNode }, 'POST');
 
                 if (res.status === 'success') {
-                    this.showToast("Novo Chat consolidado com sucesso!");
-                } else if (res.message === 'Chat já está nos seus estudos.') {
-                    this.showToast("Caminho atualizado.", "info");
+                    this.showToast("+10 XP Adquirido!", "xp");
+                    this.startStudySession(); 
+                } else {
+                    this.showToast("Erro ao processar.", "error");
+                    document.getElementById('footer-study').classList.remove('hidden-app');
+                }
+            },
+
+            async continueChat() {
+                if (!this.currentStudyNode) return;
+                const targetNode = this.currentStudyNode;
+                
+                // Concede o XP da leitura antes de pular para derivação
+                await Api.fetch('submit_review', { node_id: targetNode }, 'POST');
+                
+                this.isDeriving = true;
+                this.derivationBaseId = targetNode;
+                this.switchTab('explore');
+                this.loadExplorePath(targetNode);
+            },
+
+            // --- CRIAÇÃO / EXPLORAÇÃO ---
+            async finishChat() {
+                if (!this.currentNodeId) {
+                    this.switchTab('study');
+                    return;
                 }
 
-                this.checkStudyQueue(); 
-                this.goHome(); // Limpa a tela
+                if (this.isDeriving && this.currentNodeId === this.derivationBaseId) {
+                    this.showToast("Adicione algo novo para consolidar um ramo.", "error");
+                    return;
+                }
+
+                const currentGroupId = this.dirPath[this.dirPath.length - 1].id;
+                const res = await Api.fetch('add_to_study', { node_id: this.currentNodeId, group_id: currentGroupId }, 'POST');
+
+                if (res.status === 'success') {
+                    this.showToast("Chat gravado neste grupo com sucesso!");
+                }
+                
+                this.currentNodeId = null;
+                this.isDeriving = false;
+                this.derivationBaseId = null;
+                this.switchTab('study'); // Volta pra aba estudo para ver a fila
             },
 
             async loadExplorePath(nodeId) {
@@ -395,7 +590,6 @@
                     this.chatPath = [];
                     this.currentSpeaker = 1; 
                 }
-                
                 this.renderExplore();
             },
 
@@ -417,57 +611,44 @@
                 }
             },
 
-            // --- A MÁGICA VISUAL DO DERIVAR FICA AQUI ---
             renderExplore() {
                 const container = document.getElementById('view-explore');
                 container.innerHTML = '';
 
                 if (this.chatPath.length === 0) {
                     container.innerHTML = `
-                        <div class="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-500 text-center animate-fade-in mt-10">
-                            <i class="fas fa-seedling text-5xl mb-4 text-blue-500/40"></i>
-                            <h2 class="text-xl font-bold text-slate-300 mb-2">Novo Ponto de Partida</h2>
-                            <p class="text-sm max-w-[250px] mx-auto mb-4">Insira uma afirmação ou pergunta base para iniciar uma nova árvore de conhecimento.</p>
+                        <div class="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-500 text-center animate-fade-in">
+                            <i class="fas fa-seedling text-6xl mb-4 text-blue-500/30"></i>
+                            <h2 class="text-xl font-bold text-white mb-2">Plantando Sementes</h2>
+                            <p class="text-sm max-w-[280px] mx-auto">Toda grande árvore começa com uma pequena pergunta. Insira o ponto de partida deste novo raciocínio.</p>
                         </div>`;
                 } else {
-                    let baseHtml = '';
-                    let newHtml = '';
+                    let baseHtml = ''; let newHtml = '';
 
-                    // SE ESTIVER DERIVANDO: Encaixota o histórico antigo para provar que foi copiado
                     if (this.isDeriving && this.derivationBaseId) {
                         let reachedBase = false;
                         this.chatPath.forEach(node => {
                             if (!reachedBase) {
                                 baseHtml += this.createMessageHTML(node, true);
                                 if (node.id == this.derivationBaseId) reachedBase = true;
-                            } else {
-                                newHtml += this.createMessageHTML(node, false);
-                            }
+                            } else { newHtml += this.createMessageHTML(node, false); }
                         });
 
                         container.innerHTML += `
-                            <div class="relative bg-slate-800/60 border-2 border-dashed border-slate-700/80 p-3 pt-7 rounded-2xl mb-8 mt-5 shadow-inner">
-                                <div class="absolute -top-3.5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full shadow border border-blue-500 font-bold uppercase tracking-widest flex items-center gap-1 whitespace-nowrap">
-                                    <i class="fas fa-copy"></i> Cópia do Ponto de Partida
+                            <div class="relative bg-slate-800/40 border-2 border-dashed border-slate-700/60 p-3 pt-6 rounded-2xl mb-8 mt-5 shadow-inner">
+                                <div class="absolute -top-3.5 left-1/2 transform -translate-x-1/2 bg-slate-700 text-slate-300 text-[10px] px-3 py-1 rounded-full shadow border border-slate-600 font-bold uppercase tracking-widest flex items-center gap-1">
+                                    <i class="fas fa-history"></i> Base do Raciocínio
                                 </div>
                                 ${baseHtml}
                             </div>
                         `;
-
-                        if (newHtml) {
-                            container.innerHTML += newHtml;
-                        } else {
-                            container.innerHTML += `
-                                <div class="text-center text-xs text-blue-400 font-bold uppercase tracking-wider my-6 flex flex-col items-center justify-center gap-2 animate-pulse">
-                                    <i class="fas fa-arrow-down text-lg"></i> Adicione as mensagens do NOVO CHAT abaixo
-                                </div>
-                            `;
+                        if (newHtml) { container.innerHTML += newHtml; } 
+                        else {
+                            container.innerHTML += `<div class="text-center text-xs text-blue-400 font-bold uppercase tracking-wider my-6 flex flex-col items-center gap-2 animate-pulse"><i class="fas fa-arrow-down text-lg"></i> Continue o raciocínio abaixo</div>`;
                         }
                     } else {
-                        // Fluxo normal (novo chat do zero)
                         this.chatPath.forEach(node => { container.innerHTML += this.createMessageHTML(node); });
                     }
-                    
                     container.innerHTML += `<div class="h-6"></div>`;
                 }
 
@@ -476,177 +657,39 @@
                 const ctxInd = document.getElementById('context-indicator');
 
                 if (this.currentSpeaker === 1) {
-                    inputObj.placeholder = "Faça uma pergunta (P1)...";
+                    inputObj.placeholder = "P1: Faça uma pergunta ou afirmação...";
                     speakerInd.innerHTML = '<i class="fas fa-user mr-1"></i> P1';
-                    speakerInd.className = 'font-bold text-blue-400 text-xs bg-blue-900/30 px-2 py-1 rounded';
+                    speakerInd.className = 'font-bold text-blue-400 text-xs bg-blue-900/30 px-2 py-1 rounded border border-blue-500/30';
                 } else {
-                    inputObj.placeholder = "Dê uma resposta (P2)...";
+                    inputObj.placeholder = "P2: Dê uma resposta ou explicação...";
                     speakerInd.innerHTML = 'P2 <i class="fas fa-robot ml-1"></i>';
-                    speakerInd.className = 'font-bold text-slate-400 text-xs bg-slate-700/50 px-2 py-1 rounded';
+                    speakerInd.className = 'font-bold text-slate-300 text-xs bg-slate-700/50 px-2 py-1 rounded border border-slate-600/50';
                 }
 
-                if (this.currentNodeId === null) {
-                    ctxInd.classList.add('hidden-app');
-                    ctxInd.classList.remove('flex');
-                } else {
-                    ctxInd.classList.remove('hidden-app');
-                    ctxInd.classList.add('flex');
-                }
+                if (this.currentNodeId === null) { ctxInd.classList.add('hidden-app'); ctxInd.classList.remove('flex'); } 
+                else { ctxInd.classList.remove('hidden-app'); ctxInd.classList.add('flex'); }
 
                 setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
             },
 
-            // --- PERFIL: PARA O USUÁRIO VER QUE O CHAT ANTIGO AINDA EXISTE INTACTO ---
-            async loadProfile() {
-                const container = document.getElementById('view-profile');
-                container.innerHTML = '<div class="text-center text-slate-400 mt-10"><i class="fas fa-spinner fa-spin text-3xl"></i> Buscando seus chats...</div>';
-
-                const res = await Api.fetch('get_my_chats');
-                if (res.status === 'success') {
-                    if (res.chats.length === 0) {
-                        container.innerHTML = `
-                            <div class="flex flex-col items-center justify-center mt-10 text-slate-500">
-                                <i class="fas fa-folder-open text-5xl mb-4 text-blue-500/30"></i>
-                                <p>Você ainda não tem chats consolidados.</p>
-                            </div>`;
-                        return;
-                    }
-
-                    let html = `<h2 class="text-lg font-bold text-white mb-6 flex items-center"><i class="fas fa-layer-group text-blue-400 mr-2"></i> Meus Chats Independentes (${res.chats.length})</h2>`;
-                    
-                    res.chats.forEach(chat => {
-                        const date = new Date(chat.created_at).toLocaleDateString('pt-BR');
-                        html += `
-                            <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-sm mb-4 cursor-pointer hover:bg-slate-700/80 transition flex flex-col gap-2 relative overflow-hidden group" onclick="app.viewChatFromProfile(${chat.node_id})">
-                                <div class="absolute right-0 top-0 h-full w-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition"></div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-xs font-bold text-blue-400 uppercase tracking-wider"><i class="fas fa-route mr-1"></i> Final no Nó #${chat.node_id}</span>
-                                    <span class="text-[10px] text-slate-400 bg-slate-900 px-2 py-1 rounded border border-slate-700"><i class="far fa-calendar-alt mr-1"></i> ${date}</span>
-                                </div>
-                                <p class="text-slate-300 text-sm line-clamp-2 leading-relaxed italic border-l-2 border-slate-600 pl-3 my-1">"... ${chat.content} ..."</p>
-                                <div class="flex justify-between items-center mt-2 border-t border-slate-700 pt-3">
-                                    <span class="text-[10px] text-emerald-400 font-semibold bg-emerald-900/30 px-2 py-1 rounded"><i class="fas fa-brain"></i> Revisões feitas: ${chat.repetitions}</span>
-                                    <span class="text-xs text-blue-300 font-semibold group-hover:underline">Ler chat completo <i class="fas fa-arrow-right ml-1"></i></span>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    container.innerHTML = html;
-                }
-            },
-
-            viewChatFromProfile(nodeId) {
-                // Apenas visualiza (não é modo derivação)
-                this.isDeriving = false;
-                this.derivationBaseId = null;
-                this.switchTab('explore');
-                this.loadExplorePath(nodeId);
-            },
-
-            // --- MODO: ESTUDO (Repetição Espaçada) ---
-            async checkStudyQueue() {
-                const res = await Api.fetch('get_study_queue');
-                if (res.status === 'success') {
-                    this.studyQueue = res.queue || [];
-                    const badge = document.getElementById('study-badge');
-                    if (this.studyQueue.length > 0) {
-                        badge.textContent = this.studyQueue.length;
-                        badge.classList.remove('hidden-app');
-                    } else {
-                        badge.classList.add('hidden-app');
-                    }
-                }
-            },
-
-            async startStudySession() {
-                await this.checkStudyQueue();
-                const container = document.getElementById('view-study');
-                const footer = document.getElementById('footer-study');
-
-                if (this.studyQueue.length === 0) {
-                    footer.classList.add('hidden-app');
-                    container.innerHTML = `
-                        <div class="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-500 text-center mt-10">
-                            <i class="fas fa-glass-cheers text-5xl mb-4 text-emerald-500/40"></i>
-                            <h2 class="text-xl font-bold text-slate-300 mb-2">Sua mente está afiada!</h2>
-                            <p class="text-sm max-w-[250px] mx-auto">Você revisou todos os raciocínios programados para hoje.</p>
-                        </div>`;
-                    return;
-                }
-
-                footer.classList.remove('hidden-app');
-                const item = this.studyQueue[0];
-                this.currentStudyNode = item.node_id;
-
-                const res = await Api.fetch('get_chat_path', { node_id: this.currentStudyNode });
-                const path = res.path || [];
-
-                container.innerHTML = `
-                    <div class="mb-6 pb-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-[#0f172a] z-10 pt-2">
-                        <span class="text-xs md:text-sm text-slate-400 font-semibold truncate pr-2"><i class="fas fa-book-reader text-blue-400 mr-1 md:mr-2"></i> Revisão de Raciocínio</span>
-                        <span class="text-[10px] md:text-xs bg-slate-800 text-blue-300 px-2 md:px-3 py-1 rounded-full border border-slate-700 font-bold shrink-0">Faltam: ${this.studyQueue.length}</span>
-                    </div>
-                `;
-
-                path.forEach(node => { container.innerHTML += this.createMessageHTML(node); });
-                setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
-            },
-
-            async submitStudy() {
-                if (!this.currentStudyNode) return;
-                document.getElementById('footer-study').classList.add('hidden-app');
-                
-                const res = await Api.fetch('submit_review', { node_id: this.currentStudyNode, quality: 4 }, 'POST');
-
-                if (res.status === 'success') {
-                    this.studyQueue.shift(); 
-                    this.startStudySession(); 
-                } else {
-                    alert("Erro ao salvar revisão");
-                    document.getElementById('footer-study').classList.remove('hidden-app');
-                }
-            },
-
-            async continueChat() {
-                if (!this.currentStudyNode) return;
-                const targetNode = this.currentStudyNode;
-                document.getElementById('footer-study').classList.add('hidden-app');
-                
-                // 1. Marca este chat atual como lido
-                await Api.fetch('submit_review', { node_id: targetNode, quality: 4 }, 'POST');
-                this.studyQueue.shift();
-                
-                // 2. Transfere a base para a tela de Criação (Derivação)
-                this.isDeriving = true;
-                this.derivationBaseId = targetNode; // Guardamos o ponto de quebra!
-                
-                this.switchTab('explore');
-                this.loadExplorePath(targetNode);
-                
-                this.showToast("Histórico copiado! Adicione novas mensagens.", "info");
-            },
-
-            // --- ESTILIZAÇÃO DINÂMICA (BASE vs NOVO) ---
             createMessageHTML(node, isBase = false) {
                 const isPerson1 = node.speaker === 1;
                 const alignClass = isPerson1 ? 'justify-end' : 'justify-start';
-                
-                // Mensagens que vieram do histórico (isBase = true) ficam opacas e sem sombra
-                const baseStyles = isBase ? 'opacity-60 scale-[0.98]' : 'shadow-lg border-2 border-transparent';
+                const baseStyles = isBase ? 'opacity-50 scale-[0.98] grayscale-[30%]' : 'shadow-lg';
                 const bubbleClass = isPerson1 ? 'chat-bubble-1 text-white' : 'chat-bubble-2 text-slate-100';
-                
                 const author = isPerson1 ? 'Personagem 1' : 'Personagem 2'; 
                 
                 return `
                     <div class="flex ${alignClass} mb-4 animate-fade-in">
-                        <div class="max-w-[85%] md:max-w-[75%] flex flex-col">
+                        <div class="max-w-[85%] md:max-w-[75%] flex flex-col relative group">
                             <span class="text-[10px] text-slate-500 mb-1 font-semibold uppercase tracking-wider ${isPerson1 ? 'text-right' : 'text-left'}">${author}</span>
-                            <div class="${bubbleClass} ${baseStyles} rounded-[1.2rem] ${isPerson1 ? 'rounded-br-[0.3rem]' : 'rounded-bl-[0.3rem]'} p-3.5 md:p-4 relative group text-sm md:text-base leading-relaxed break-words transition-all border ${isBase ? 'border-transparent' : (isPerson1 ? 'border-blue-500' : 'border-slate-500')}">
+                            <div class="${bubbleClass} ${baseStyles} rounded-[1.2rem] ${isPerson1 ? 'rounded-br-[0.3rem]' : 'rounded-bl-[0.3rem]'} p-3.5 md:p-4 text-sm md:text-base leading-relaxed break-words transition-all border ${isBase ? 'border-transparent' : (isPerson1 ? 'border-blue-500/50' : 'border-slate-500/50')}">
                                 ${node.content}
-                                <button onclick="Api.generateAudio(${node.id})" class="absolute -bottom-3 ${isPerson1 ? '-left-2' : '-right-2'} bg-slate-800 text-slate-300 w-7 h-7 md:w-8 md:h-8 rounded-full shadow-lg border border-slate-600 hover:text-blue-400 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                    <i class="fas fa-volume-up text-[10px]"></i>
-                                </button>
                             </div>
+                            <!-- Botão de Audio -->
+                            <button onclick="Api.generateAudio(${node.id})" class="absolute bottom-1 ${isPerson1 ? '-left-8' : '-right-8'} text-slate-500 hover:text-blue-400 transition opacity-0 group-hover:opacity-100 p-2">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
                         </div>
                     </div>
                 `;
