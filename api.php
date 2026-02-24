@@ -103,7 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$current_user_id, $node_id]);
         if (!$stmt->fetch()) {
             // Se não existe, cria a raiz de progresso (pontuação zero)
-            $stmt = $pdo->prepare("INSERT INTO study_progress (user_id, node_id, repetitions, interval_minutes, ease_factor, next_review_date, score) VALUES (?, ?, 0, 1440, 2.5, NOW(), 0)");
+            // interval_minutes inicia como 15 para padrão do banco, mas a primeira revisão real é imediata (NOW)
+            $stmt = $pdo->prepare("INSERT INTO study_progress (user_id, node_id, repetitions, interval_minutes, ease_factor, next_review_date, score) VALUES (?, ?, 0, 15, 2.5, NOW(), 0)");
             $stmt->execute([$current_user_id, $node_id]);
         }
 
@@ -115,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // SUBMETER REVISÃO (LÓGICA LINEAR, TODA REVISÃO TEM O MESMO PESO E VALOR)
+    // SUBMETER REVISÃO (LÓGICA LINEAR E ESPAÇAMENTO DINÂMICO)
     if ($action === 'submit_review') {
         $node_id = $data['node_id'];
         
@@ -133,12 +134,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // PONTUAÇÃO FIXA: +10 pontos de XP por revisão completada
         $score_increment = 10; 
         
-        // INTERVALO FIXO: A próxima revisão acontece daqui 1 dia (1440 minutos)
-        // Você pode alterar isso para testes (ex: +5 minutes)
-        $next_review = date('Y-m-d H:i:s', strtotime("+1440 minutes"));
+        // INTERVALO DINÂMICO: Quantidade de revisões (atual) vezes 15 minutos
+        $interval_minutes = $repetitions * 15;
+        $next_review = date('Y-m-d H:i:s', strtotime("+$interval_minutes minutes"));
 
-        $stmt = $pdo->prepare("UPDATE study_progress SET repetitions = ?, next_review_date = ?, score = score + ? WHERE id = ?");
-        $stmt->execute([$repetitions, $next_review, $score_increment, $progress['id']]);
+        // Atualiza salvando também a nova quantidade de minutos no banco (interval_minutes)
+        $stmt = $pdo->prepare("UPDATE study_progress SET repetitions = ?, interval_minutes = ?, next_review_date = ?, score = score + ? WHERE id = ?");
+        $stmt->execute([$repetitions, $interval_minutes, $next_review, $score_increment, $progress['id']]);
 
         echo json_encode(['status' => 'success', 'next_review' => $next_review]);
         exit;
