@@ -1,5 +1,5 @@
 <?php
-// api.php - Backend com Sistema de Diretórios e Pontuação Linear
+// api.php - Backend com Sistema de Diretórios, Pontuação e Edição de Nós
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // EXCLUIR DIRETÓRIO / GRUPO (Com exclusão em cascata e Poda de Árvore)
+    // EXCLUIR DIRETÓRIO / GRUPO
     if ($action === 'delete_group') {
         $group_id = $data['group_id'] ?? null;
 
@@ -100,7 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // 1. Função para pegar todas as subpastas
         function getSubGroups($pdo, $parentId, $userId) {
             $stmt = $pdo->prepare("SELECT id FROM `groups` WHERE parent_id = ? AND user_id = ?");
             $stmt->execute([$parentId, $userId]);
@@ -112,36 +111,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return $allIds;
         }
 
-        // 2. Função recursiva para limpar os galhos da árvore que ficarem órfãos (De baixo para cima)
         function pruneOrphanedChats($pdo, $nodeIds) {
             foreach($nodeIds as $nodeId) {
                 if (!$nodeId) continue;
 
-                // A. Verifica se o nó ainda está salvo em algum outro grupo do sistema
                 $stmt = $pdo->prepare("SELECT COUNT(*) FROM group_nodes WHERE node_id = ?");
                 $stmt->execute([$nodeId]);
-                if ($stmt->fetchColumn() > 0) continue; // Ainda pertence a outro grupo, mantemos.
+                if ($stmt->fetchColumn() > 0) continue; 
 
-                // B. Verifica se o nó tem filhos (se ele for base para outras derivações, não podemos apagar)
                 $stmt = $pdo->prepare("SELECT COUNT(*) FROM chat_nodes WHERE parent_id = ?");
                 $stmt->execute([$nodeId]);
-                if ($stmt->fetchColumn() > 0) continue; // É base para outras ramificações, mantemos.
+                if ($stmt->fetchColumn() > 0) continue; 
 
-                // Se chegou aqui, é um nó folha órfão e inútil! Vamos apagá-lo.
-                // Primeiro, pegamos o ID do pai dele para checar se o pai também ficou inútil depois.
                 $stmt = $pdo->prepare("SELECT parent_id FROM chat_nodes WHERE id = ?");
                 $stmt->execute([$nodeId]);
                 $parentId = $stmt->fetchColumn();
 
-                // Deleta o progresso de estudo associado
                 $pdo->prepare("DELETE FROM study_progress WHERE node_id = ?")->execute([$nodeId]);
-                // Deleta a mensagem do banco de dados
                 $pdo->prepare("DELETE FROM chat_nodes WHERE id = ?")->execute([$nodeId]);
 
-                // Recursividade: Tenta podar o pai (ele pode ter virado uma folha órfã agora que o filho sumiu)
-                if ($parentId) {
-                    pruneOrphanedChats($pdo, [$parentId]);
-                }
+                if ($parentId) { pruneOrphanedChats($pdo, [$parentId]); }
             }
         }
 
@@ -153,24 +142,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $inQuery = implode(',', array_fill(0, count($idsToDelete), '?'));
 
-            // Antes de deletar as relações, pegamos todos os nós de chat que estavam nessas pastas
             $stmtNodes = $pdo->prepare("SELECT DISTINCT node_id FROM group_nodes WHERE group_id IN ($inQuery)");
             $stmtNodes->execute($idsToDelete);
             $affectedNodes = $stmtNodes->fetchAll(PDO::FETCH_COLUMN);
 
-            // 1. Remove as associações (Tira os chats das pastas)
             $stmtRel = $pdo->prepare("DELETE FROM group_nodes WHERE group_id IN ($inQuery)");
             $stmtRel->execute($idsToDelete);
 
-            // 2. Deleta os grupos / pastas
             $stmtDel = $pdo->prepare("DELETE FROM `groups` WHERE id IN ($inQuery) AND user_id = ?");
             $params = array_merge($idsToDelete, [$current_user_id]);
             $stmtDel->execute($params);
 
-            // 3. Poda a Árvore (Apaga chats e ramificações que ficaram 100% órfãs)
-            if (!empty($affectedNodes)) {
-                pruneOrphanedChats($pdo, $affectedNodes);
-            }
+            if (!empty($affectedNodes)) { pruneOrphanedChats($pdo, $affectedNodes); }
 
             $pdo->commit();
             echo json_encode(['status' => 'success', 'message' => 'Grupo excluído e chats órfãos limpos com sucesso.']);
@@ -197,6 +180,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // EDITAR MENSAGEM (NOVO)
+    if ($action === 'edit_node') {
+        $node_id = $data['node_id'] ?? null;
+        $content = $data['content'] ?? '';
+
+        if (!$node_id || !$content) {
+            echo json_encode(['status' => 'error', 'message' => 'Dados inválidos.']);
+            exit;
+        }
+
+        // Criptografa o novo conteúdo antes de salvar
+        $encrypted_content = encryptMessage($content, $user_encryption_key);
+
+        // Atualiza garantindo que o nó pertence ao usuário logado
+        $stmt = $pdo->prepare("UPDATE chat_nodes SET content_encrypted = ? WHERE id = ? AND user_id = ?");
+        $stmt->execute([$encrypted_content, $node_id, $current_user_id]);
+
+        if ($stmt->rowCount() > 0) {
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Mensagem não encontrada ou sem permissão.']);
+        }
+        exit;
+    }
+
+    // EXCLUIR MENSAGEM EM CASCATA (NOVO)
+    if ($action === 'delete_node') {
+        $node_id = $data['node_id'] ?? null;
+
+        if (!$node_id) {
+            echo json_encode(['status' => 'error', 'message' => 'ID da mensagem não fornecido.']);
+            exit;
+        }
+
+        // Verifica permissão e pega o parent_id para o frontend saber para onde voltar
+        $stmt = $pdo->prepare("SELECT parent_id FROM chat_nodes WHERE id = ? AND user_id = ?");
+        $stmt->execute([$node_id, $current_user_id]);
+        $node = $stmt->fetch();
+
+        if (!$node) {
+            echo json_encode(['status' => 'error', 'message' => 'Mensagem não encontrada ou permissão negada.']);
+            exit;
+        }
+
+        $parentId = $node['parent_id'];
+
+        // Função recursiva para deletar a mensagem e TODOS os "galhos" (derivações) que nasceram a partir dela
+        function deleteNodeTree($pdo, $startNodeId) {
+            // Pega todos os nós filhos que derivaram deste
+            $stmt = $pdo->prepare("SELECT id FROM chat_nodes WHERE parent_id = ?");
+            $stmt->execute([$startNodeId]);
+            $children = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // Chama recursão para apagar os filhos dos filhos
+            foreach ($children as $childId) {
+                deleteNodeTree($pdo, $childId);
+            }
+
+            // Exclui dependências desta mensagem
+            $pdo->prepare("DELETE FROM study_progress WHERE node_id = ?")->execute([$startNodeId]);
+            $pdo->prepare("DELETE FROM group_nodes WHERE node_id = ?")->execute([$startNodeId]);
+            
+            // Exclui o áudio gerado se ele existir fisicamente no servidor
+            $stmtAudio = $pdo->prepare("SELECT audio_url FROM chat_nodes WHERE id = ?");
+            $stmtAudio->execute([$startNodeId]);
+            $audioUrl = $stmtAudio->fetchColumn();
+            if ($audioUrl && file_exists($audioUrl)) {
+                unlink($audioUrl);
+            }
+
+            // Finalmente, exclui a mensagem
+            $pdo->prepare("DELETE FROM chat_nodes WHERE id = ?")->execute([$startNodeId]);
+        }
+
+        try {
+            $pdo->beginTransaction();
+            deleteNodeTree($pdo, $node_id);
+            $pdo->commit();
+            
+            echo json_encode(['status' => 'success', 'parent_id' => $parentId]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo json_encode(['status' => 'error', 'message' => 'Erro ao excluir ramificação: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
     // CONSOLIDAR CHAT E ASSOCIAR AO GRUPO
     if ($action === 'add_to_study') {
         $node_id = $data['node_id'];
@@ -207,7 +277,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Verifica se já está nos estudos
         $stmt = $pdo->prepare("SELECT id FROM study_progress WHERE user_id = ? AND node_id = ?");
         $stmt->execute([$current_user_id, $node_id]);
         if (!$stmt->fetch()) {
@@ -251,7 +320,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // --- MÉTODOS GET ---
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
-    // NAVEGAR DIRETÓRIOS E CALCULAR PONTUAÇÃO (SQL AVANÇADO)
     if ($action === 'get_directory') {
         $parent_id = !empty($_GET['parent_id']) && $_GET['parent_id'] !== 'null' ? (int)$_GET['parent_id'] : null;
         
@@ -289,7 +357,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
-    // PEGAR O CAMINHO DE UMA CONVERSA
     if ($action === 'get_chat_path') {
         $node_id = $_GET['node_id'] ?? null;
         $path = [];
@@ -319,7 +386,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
-    // OBTER FILA DE ESTUDOS
     if ($action === 'get_study_queue') {
         $group_id = $_GET['group_id'] ?? null;
         if (!$group_id) {
