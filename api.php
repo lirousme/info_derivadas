@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // EXCLUIR DIRETÓRIO / GRUPO (Com exclusão em cascata de subgrupos)
+    // EXCLUIR DIRETÓRIO / GRUPO (Com exclusão em cascata e Poda de Árvore)
     if ($action === 'delete_group') {
         $group_id = $data['group_id'] ?? null;
 
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Função recursiva em PHP para pegar todos os sub-grupos e evitar erros de constraint no banco
+        // 1. Função para pegar todas as subpastas
         function getSubGroups($pdo, $parentId, $userId) {
             $stmt = $pdo->prepare("SELECT id FROM `groups` WHERE parent_id = ? AND user_id = ?");
             $stmt->execute([$parentId, $userId]);
@@ -112,28 +112,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return $allIds;
         }
 
+        // 2. Função recursiva para limpar os galhos da árvore que ficarem órfãos (De baixo para cima)
+        function pruneOrphanedChats($pdo, $nodeIds) {
+            foreach($nodeIds as $nodeId) {
+                if (!$nodeId) continue;
+
+                // A. Verifica se o nó ainda está salvo em algum outro grupo do sistema
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM group_nodes WHERE node_id = ?");
+                $stmt->execute([$nodeId]);
+                if ($stmt->fetchColumn() > 0) continue; // Ainda pertence a outro grupo, mantemos.
+
+                // B. Verifica se o nó tem filhos (se ele for base para outras derivações, não podemos apagar)
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM chat_nodes WHERE parent_id = ?");
+                $stmt->execute([$nodeId]);
+                if ($stmt->fetchColumn() > 0) continue; // É base para outras ramificações, mantemos.
+
+                // Se chegou aqui, é um nó folha órfão e inútil! Vamos apagá-lo.
+                // Primeiro, pegamos o ID do pai dele para checar se o pai também ficou inútil depois.
+                $stmt = $pdo->prepare("SELECT parent_id FROM chat_nodes WHERE id = ?");
+                $stmt->execute([$nodeId]);
+                $parentId = $stmt->fetchColumn();
+
+                // Deleta o progresso de estudo associado
+                $pdo->prepare("DELETE FROM study_progress WHERE node_id = ?")->execute([$nodeId]);
+                // Deleta a mensagem do banco de dados
+                $pdo->prepare("DELETE FROM chat_nodes WHERE id = ?")->execute([$nodeId]);
+
+                // Recursividade: Tenta podar o pai (ele pode ter virado uma folha órfã agora que o filho sumiu)
+                if ($parentId) {
+                    pruneOrphanedChats($pdo, [$parentId]);
+                }
+            }
+        }
+
         try {
-            // Inicia uma transação para garantir que tudo seja deletado junto
             $pdo->beginTransaction();
 
             $idsToDelete = getSubGroups($pdo, $group_id, $current_user_id);
-            $idsToDelete[] = $group_id; // Adiciona o próprio grupo raiz da exclusão
-
-            // Cria os placeholders ?, ?, ? dinamicamente
+            $idsToDelete[] = $group_id; 
+            
             $inQuery = implode(',', array_fill(0, count($idsToDelete), '?'));
 
-            // 1. Remove as associações dos chats com os grupos que serão deletados
-            // Os chats continuam existindo na tabela chat_nodes, apenas saem destas pastas
+            // Antes de deletar as relações, pegamos todos os nós de chat que estavam nessas pastas
+            $stmtNodes = $pdo->prepare("SELECT DISTINCT node_id FROM group_nodes WHERE group_id IN ($inQuery)");
+            $stmtNodes->execute($idsToDelete);
+            $affectedNodes = $stmtNodes->fetchAll(PDO::FETCH_COLUMN);
+
+            // 1. Remove as associações (Tira os chats das pastas)
             $stmtRel = $pdo->prepare("DELETE FROM group_nodes WHERE group_id IN ($inQuery)");
             $stmtRel->execute($idsToDelete);
 
-            // 2. Deleta os grupos em si
+            // 2. Deleta os grupos / pastas
             $stmtDel = $pdo->prepare("DELETE FROM `groups` WHERE id IN ($inQuery) AND user_id = ?");
             $params = array_merge($idsToDelete, [$current_user_id]);
             $stmtDel->execute($params);
 
+            // 3. Poda a Árvore (Apaga chats e ramificações que ficaram 100% órfãs)
+            if (!empty($affectedNodes)) {
+                pruneOrphanedChats($pdo, $affectedNodes);
+            }
+
             $pdo->commit();
-            echo json_encode(['status' => 'success', 'message' => 'Grupo e subgrupos excluídos com sucesso.']);
+            echo json_encode(['status' => 'success', 'message' => 'Grupo excluído e chats órfãos limpos com sucesso.']);
         } catch (Exception $e) {
             $pdo->rollBack();
             echo json_encode(['status' => 'error', 'message' => 'Erro ao excluir grupo: ' . $e->getMessage()]);
@@ -171,13 +211,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("SELECT id FROM study_progress WHERE user_id = ? AND node_id = ?");
         $stmt->execute([$current_user_id, $node_id]);
         if (!$stmt->fetch()) {
-            // Se não existe, cria a raiz de progresso (pontuação zero)
-            // interval_minutes inicia como 15 para padrão do banco, mas a primeira revisão real é imediata (NOW)
             $stmt = $pdo->prepare("INSERT INTO study_progress (user_id, node_id, repetitions, interval_minutes, ease_factor, next_review_date, score) VALUES (?, ?, 0, 15, 2.5, NOW(), 0)");
             $stmt->execute([$current_user_id, $node_id]);
         }
 
-        // Associa o chat ao grupo selecionado (ignora se já estiver lá)
         $stmt = $pdo->prepare("INSERT IGNORE INTO group_nodes (group_id, node_id) VALUES (?, ?)");
         $stmt->execute([$group_id, $node_id]);
         
@@ -185,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // SUBMETER REVISÃO (LÓGICA LINEAR E ESPAÇAMENTO DINÂMICO)
+    // SUBMETER REVISÃO
     if ($action === 'submit_review') {
         $node_id = $data['node_id'];
         
@@ -199,15 +236,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $repetitions = (int)$progress['repetitions'] + 1;
-        
-        // PONTUAÇÃO FIXA: +10 pontos de XP por revisão completada
         $score_increment = 10; 
-        
-        // INTERVALO DINÂMICO: Quantidade de revisões (atual) vezes 15 minutos
         $interval_minutes = $repetitions * 15;
         $next_review = date('Y-m-d H:i:s', strtotime("+$interval_minutes minutes"));
 
-        // Atualiza salvando também a nova quantidade de minutos no banco (interval_minutes)
         $stmt = $pdo->prepare("UPDATE study_progress SET repetitions = ?, interval_minutes = ?, next_review_date = ?, score = score + ? WHERE id = ?");
         $stmt->execute([$repetitions, $interval_minutes, $next_review, $score_increment, $progress['id']]);
 
@@ -223,7 +255,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($action === 'get_directory') {
         $parent_id = !empty($_GET['parent_id']) && $_GET['parent_id'] !== 'null' ? (int)$_GET['parent_id'] : null;
         
-        // Busca os grupos que estão dentro deste parent_id
         if ($parent_id === null) {
             $stmt = $pdo->prepare("SELECT id, name, type FROM `groups` WHERE user_id = ? AND parent_id IS NULL ORDER BY type ASC, name ASC");
             $stmt->execute([$current_user_id]);
@@ -233,7 +264,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         $dirs = $stmt->fetchAll();
 
-        // Cálculo RECURSIVO da pontuação para cada diretório encontrado
         foreach ($dirs as &$dir) {
             $dirId = $dir['id'];
             $queryScore = "
@@ -259,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
-    // PEGAR O CAMINHO DE UMA CONVERSA (Árvore/Grafo)
+    // PEGAR O CAMINHO DE UMA CONVERSA
     if ($action === 'get_chat_path') {
         $node_id = $_GET['node_id'] ?? null;
         $path = [];
@@ -289,7 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
-    // OBTER FILA DE ESTUDOS DE UM GRUPO ESPECÍFICO
+    // OBTER FILA DE ESTUDOS
     if ($action === 'get_study_queue') {
         $group_id = $_GET['group_id'] ?? null;
         if (!$group_id) {
