@@ -72,6 +72,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // EDITAR DIRETÓRIO / GRUPO
+    if ($action === 'edit_group') {
+        $group_id = $data['group_id'] ?? null;
+        $name = trim($data['name'] ?? '');
+        $type = in_array($data['type'] ?? '', ['folder', 'chat']) ? $data['type'] : 'folder';
+
+        if (!$group_id || !$name) {
+            echo json_encode(['status' => 'error', 'message' => 'ID e Nome são obrigatórios.']);
+            exit;
+        }
+
+        // Atualiza apenas se o grupo pertencer ao usuário logado
+        $stmt = $pdo->prepare("UPDATE `groups` SET name = ?, type = ? WHERE id = ? AND user_id = ?");
+        $stmt->execute([$name, $type, $group_id, $current_user_id]);
+
+        echo json_encode(['status' => 'success']);
+        exit;
+    }
+
+    // EXCLUIR DIRETÓRIO / GRUPO (Com exclusão em cascata de subgrupos)
+    if ($action === 'delete_group') {
+        $group_id = $data['group_id'] ?? null;
+
+        if (!$group_id) {
+            echo json_encode(['status' => 'error', 'message' => 'ID do grupo não fornecido.']);
+            exit;
+        }
+
+        // Função recursiva em PHP para pegar todos os sub-grupos e evitar erros de constraint no banco
+        function getSubGroups($pdo, $parentId, $userId) {
+            $stmt = $pdo->prepare("SELECT id FROM `groups` WHERE parent_id = ? AND user_id = ?");
+            $stmt->execute([$parentId, $userId]);
+            $children = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $allIds = $children;
+            foreach ($children as $childId) {
+                $allIds = array_merge($allIds, getSubGroups($pdo, $childId, $userId));
+            }
+            return $allIds;
+        }
+
+        try {
+            // Inicia uma transação para garantir que tudo seja deletado junto
+            $pdo->beginTransaction();
+
+            $idsToDelete = getSubGroups($pdo, $group_id, $current_user_id);
+            $idsToDelete[] = $group_id; // Adiciona o próprio grupo raiz da exclusão
+
+            // Cria os placeholders ?, ?, ? dinamicamente
+            $inQuery = implode(',', array_fill(0, count($idsToDelete), '?'));
+
+            // 1. Remove as associações dos chats com os grupos que serão deletados
+            // Os chats continuam existindo na tabela chat_nodes, apenas saem destas pastas
+            $stmtRel = $pdo->prepare("DELETE FROM group_nodes WHERE group_id IN ($inQuery)");
+            $stmtRel->execute($idsToDelete);
+
+            // 2. Deleta os grupos em si
+            $stmtDel = $pdo->prepare("DELETE FROM `groups` WHERE id IN ($inQuery) AND user_id = ?");
+            $params = array_merge($idsToDelete, [$current_user_id]);
+            $stmtDel->execute($params);
+
+            $pdo->commit();
+            echo json_encode(['status' => 'success', 'message' => 'Grupo e subgrupos excluídos com sucesso.']);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo json_encode(['status' => 'error', 'message' => 'Erro ao excluir grupo: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
     // ADICIONAR NOVA MENSAGEM
     if ($action === 'add_node') {
         $parent_id = !empty($data['parent_id']) ? $data['parent_id'] : null;
