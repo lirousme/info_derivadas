@@ -225,7 +225,8 @@
                     <button onclick="app.submitDeleteGroup()" class="w-full py-2 rounded-lg bg-red-500/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400 font-bold transition flex justify-center items-center gap-2">
                         <i class="fas fa-trash-alt"></i> Excluir Diretório
                     </button>
-                    <p class="text-[10px] text-slate-500 text-center mt-2">Atenção: Excluirá todas as subpastas. Os chats originais serão mantidos no banco central.</p>
+                    <!-- AVISO ATUALIZADO AQUI -->
+                    <p class="text-[10px] text-slate-500 text-center mt-2">Atenção: Excluirá todas as subpastas. Chats não vinculados a outros grupos também serão excluídos permanentemente da árvore.</p>
                 </div>
                 <div class="flex gap-2 mt-4">
                     <button onclick="app.closeEditGroupModal()" class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition">Cancelar</button>
@@ -318,22 +319,15 @@
 
         // --- LÓGICA DO APP (DIRETÓRIOS E ÁRVORES) ---
         const app = {
-            // Navegação de Diretórios
             dirPath: [], 
-            
-            // Lógica de Criação de Chat
             currentNodeId: null, 
             currentSpeaker: 1,   
             isPrivate: true,
             chatPath: [],        
             isDeriving: false, 
             derivationBaseId: null, 
-            
-            // Fila de Estudos
             studyQueue: [],
             currentStudyNode: null,
-
-            // Edição de Grupos
             editingGroupId: null,
 
             init() {
@@ -466,7 +460,6 @@
                                 </div>
                             </div>
                             <div class="flex flex-col items-end shrink-0 pl-2">
-                                <!-- Botão de Configuração de Pasta (Impede a navegação via stopPropagation) -->
                                 <button onclick="event.stopPropagation(); app.openEditGroupModal(${dir.id}, '${dir.name}', '${dir.type}')" class="text-slate-500 hover:text-blue-400 mb-2 p-1 transition" title="Configurações do Grupo">
                                     <i class="fas fa-cog"></i>
                                 </button>
@@ -492,13 +485,11 @@
                 const res = await Api.fetch('create_group', { parent_id: parentId, name, type }, 'POST');
                 if (res.status === 'success') {
                     document.getElementById('modal-group').classList.add('hidden-app');
-                    this.loadDirectoryLevel(parentId); // Recarrega simulando a entrada na pasta atual
+                    this.loadDirectoryLevel(parentId);
                 } else {
                     this.showToast(res.message, "error");
                 }
             },
-
-            // --- LÓGICA DE EDIÇÃO / EXCLUSÃO DE GRUPOS ---
 
             openEditGroupModal(id, name, type) {
                 this.editingGroupId = id;
@@ -520,8 +511,6 @@
                 if (res.status === 'success') {
                     this.closeEditGroupModal();
                     this.showToast("Grupo atualizado com sucesso!");
-                    
-                    // Recarrega o diretório atual
                     const parentId = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1].id : null;
                     this.loadDirectoryLevel(parentId); 
                 } else {
@@ -529,8 +518,9 @@
                 }
             },
 
+            // ALERTA JAVASCRIPT ATUALIZADO
             async submitDeleteGroup() {
-                if (!confirm("Atenção! Você tem certeza que deseja excluir este diretório?\n\n- Todas as pastas dentro dele também serão excluídas.\n- Os chats sairão destas pastas (Mas não serão excluídos do banco principal).")) {
+                if (!confirm("Atenção! Você tem certeza que deseja excluir este diretório?\n\n- Todas as subpastas também serão excluídas.\n- Chats que não estiverem vinculados a nenhum outro grupo no sistema inteiro serão APAGADOS permanentemente da árvore.")) {
                     return;
                 }
 
@@ -539,7 +529,6 @@
                     this.closeEditGroupModal();
                     this.showToast("Grupo excluído com sucesso!");
                     
-                    // Recarrega o diretório atual
                     const parentId = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1].id : null;
                     this.loadDirectoryLevel(parentId);
                 } else {
@@ -547,9 +536,6 @@
                 }
             },
 
-
-            // --- HUB DO GRUPO DE CHATS (Estudar / Criar) ---
-            
             switchTab(mode) {
                 document.getElementById('tab-study').classList.toggle('active', mode === 'study');
                 document.getElementById('tab-explore').classList.toggle('active', mode === 'explore');
@@ -567,7 +553,6 @@
                 }
             },
 
-            // --- ESTUDO ---
             async startStudySession() {
                 const currentGroupId = this.dirPath[this.dirPath.length - 1].id;
                 const res = await Api.fetch('get_study_queue', { group_id: currentGroupId });
@@ -645,7 +630,6 @@
                 this.loadExplorePath(targetNode);
             },
 
-            // --- CRIAÇÃO / EXPLORAÇÃO ---
             async finishChat() {
                 if (!this.currentNodeId) {
                     this.switchTab('study');
