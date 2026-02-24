@@ -58,7 +58,7 @@
         </div>
     </div>
 
-    <!-- HEADER DO APP (Agora focado nos Breadcrumbs de Diretório) -->
+    <!-- HEADER DO APP -->
     <header id="app-header" class="hidden-app flex-none bg-slate-900/90 backdrop-blur-md shadow-md flex flex-col z-20 border-b border-slate-700 pt-safe">
         <div class="p-3 md:p-4 flex justify-between items-center">
             <div class="flex flex-col gap-1 overflow-hidden">
@@ -108,10 +108,10 @@
         </div>
     </main>
 
-    <!-- View 2: Fila de Estudos (Dentro da Pasta de Chat) -->
+    <!-- View 2: Fila de Estudos -->
     <main id="view-study" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
     
-    <!-- View 3: Criação de Chats (Dentro da Pasta de Chat) -->
+    <!-- View 3: Criação de Chats -->
     <main id="view-explore" class="hidden-app flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth"></main>
 
 
@@ -193,9 +193,51 @@
         </div>
     </div>
 
+    <!-- Modal Editar/Excluir Grupo -->
+    <div id="modal-edit-group" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 hidden-app">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl w-full max-w-sm">
+            <h3 class="text-xl font-bold text-white mb-4"><i class="fas fa-cog text-blue-400 mr-2"></i>Editar Grupo</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Nome do Diretório/Grupo</label>
+                    <input type="text" id="edit-group-name" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Tipo de Conteúdo</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="edit-group-type" value="folder" class="peer hidden">
+                            <div class="text-center p-3 rounded-xl border border-slate-600 bg-slate-900 text-slate-400 peer-checked:bg-blue-600/20 peer-checked:border-blue-500 peer-checked:text-blue-300 transition text-sm">
+                                <i class="fas fa-folder-tree block mb-1 text-lg"></i>
+                                Outros Grupos
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="edit-group-type" value="chat" class="peer hidden">
+                            <div class="text-center p-3 rounded-xl border border-slate-600 bg-slate-900 text-slate-400 peer-checked:bg-emerald-600/20 peer-checked:border-emerald-500 peer-checked:text-emerald-300 transition text-sm">
+                                <i class="fas fa-comments block mb-1 text-lg"></i>
+                                Lista de Chats
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-slate-700">
+                    <button onclick="app.submitDeleteGroup()" class="w-full py-2 rounded-lg bg-red-500/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400 font-bold transition flex justify-center items-center gap-2">
+                        <i class="fas fa-trash-alt"></i> Excluir Diretório
+                    </button>
+                    <p class="text-[10px] text-slate-500 text-center mt-2">Atenção: Excluirá todas as subpastas. Os chats originais serão mantidos no banco central.</p>
+                </div>
+                <div class="flex gap-2 mt-4">
+                    <button onclick="app.closeEditGroupModal()" class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition">Cancelar</button>
+                    <button onclick="app.submitEditGroup()" class="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-lg">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script>
-        // --- AUTENTICAÇÃO --- (Mantida com os mesmos comportamentos)
+        // --- AUTENTICAÇÃO --- 
         const Auth = {
             tokenKey: 'info_derivadas_token',
             isLoginMode: true,
@@ -277,7 +319,7 @@
         // --- LÓGICA DO APP (DIRETÓRIOS E ÁRVORES) ---
         const app = {
             // Navegação de Diretórios
-            dirPath: [], // Array de {id, name, type}
+            dirPath: [], 
             
             // Lógica de Criação de Chat
             currentNodeId: null, 
@@ -291,9 +333,12 @@
             studyQueue: [],
             currentStudyNode: null,
 
+            // Edição de Grupos
+            editingGroupId: null,
+
             init() {
                 this.bindEvents();
-                this.loadDirectoryLevel(null); // Carrega raiz
+                this.loadDirectoryLevel(null); 
             },
 
             bindEvents() {
@@ -337,13 +382,12 @@
             // --- SISTEMA DE DIRETÓRIOS ---
             
             async loadDirectoryLevel(groupId, groupName = 'Raiz', groupType = 'folder') {
-                // Atualiza o caminho (Breadcrumbs)
                 if (groupId === null) {
                     this.dirPath = [];
                 } else {
                     const idx = this.dirPath.findIndex(d => d.id === groupId);
                     if (idx > -1) {
-                        this.dirPath = this.dirPath.slice(0, idx + 1); // Corta até aqui
+                        this.dirPath = this.dirPath.slice(0, idx + 1); 
                     } else {
                         this.dirPath.push({ id: groupId, name: groupName, type: groupType });
                     }
@@ -353,7 +397,6 @@
 
                 const currentLvl = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1] : {id: null, type: 'folder'};
 
-                // Controle de View
                 document.getElementById('view-directory').classList.add('hidden-app');
                 document.getElementById('view-explore').classList.add('hidden-app');
                 document.getElementById('view-study').classList.add('hidden-app');
@@ -362,16 +405,14 @@
                 document.getElementById('chat-group-tabs').classList.add('hidden-app');
 
                 if (currentLvl.type === 'folder') {
-                    // É uma pasta de grupos, mostra o GRID
                     document.getElementById('view-directory').classList.remove('hidden-app');
                     document.getElementById('dir-title').innerHTML = currentLvl.id === null ? '<i class="fas fa-home text-blue-400"></i> Raiz' : `<i class="fas fa-folder-open text-blue-400"></i> ${currentLvl.name}`;
                     
                     const res = await Api.fetch('get_directory', { parent_id: currentLvl.id });
                     this.renderDirectoryGrid(res.directories || []);
                 } else {
-                    // É um grupo de chats! Mostra o hub de estudos e criação (tabs)
                     document.getElementById('chat-group-tabs').classList.remove('hidden-app');
-                    this.switchTab('study'); // Vai para estudo por padrão
+                    this.switchTab('study'); 
                 }
             },
 
@@ -387,7 +428,6 @@
                 container.innerHTML = html;
             },
 
-            // Lógica de Cores da Pontuação XP
             getScoreStyle(score) {
                 if (score === 0) return { icon: 'text-slate-500', bg: 'bg-slate-800 border-slate-700' };
                 if (score < 50) return { icon: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30' };
@@ -426,6 +466,10 @@
                                 </div>
                             </div>
                             <div class="flex flex-col items-end shrink-0 pl-2">
+                                <!-- Botão de Configuração de Pasta (Impede a navegação via stopPropagation) -->
+                                <button onclick="event.stopPropagation(); app.openEditGroupModal(${dir.id}, '${dir.name}', '${dir.type}')" class="text-slate-500 hover:text-blue-400 mb-2 p-1 transition" title="Configurações do Grupo">
+                                    <i class="fas fa-cog"></i>
+                                </button>
                                 <span class="text-xs text-slate-500 font-bold">XP</span>
                                 <span class="text-lg font-black ${style.icon}">${dir.score}</span>
                             </div>
@@ -448,7 +492,56 @@
                 const res = await Api.fetch('create_group', { parent_id: parentId, name, type }, 'POST');
                 if (res.status === 'success') {
                     document.getElementById('modal-group').classList.add('hidden-app');
-                    this.loadDirectoryLevel(parentId); // Recarrega
+                    this.loadDirectoryLevel(parentId); // Recarrega simulando a entrada na pasta atual
+                } else {
+                    this.showToast(res.message, "error");
+                }
+            },
+
+            // --- LÓGICA DE EDIÇÃO / EXCLUSÃO DE GRUPOS ---
+
+            openEditGroupModal(id, name, type) {
+                this.editingGroupId = id;
+                document.getElementById('edit-group-name').value = name;
+                document.querySelector(`input[name="edit-group-type"][value="${type}"]`).checked = true;
+                document.getElementById('modal-edit-group').classList.remove('hidden-app');
+            },
+
+            closeEditGroupModal() {
+                this.editingGroupId = null;
+                document.getElementById('modal-edit-group').classList.add('hidden-app');
+            },
+
+            async submitEditGroup() {
+                const name = document.getElementById('edit-group-name').value;
+                const type = document.querySelector('input[name="edit-group-type"]:checked').value;
+
+                const res = await Api.fetch('edit_group', { group_id: this.editingGroupId, name, type }, 'POST');
+                if (res.status === 'success') {
+                    this.closeEditGroupModal();
+                    this.showToast("Grupo atualizado com sucesso!");
+                    
+                    // Recarrega o diretório atual
+                    const parentId = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1].id : null;
+                    this.loadDirectoryLevel(parentId); 
+                } else {
+                    this.showToast(res.message, "error");
+                }
+            },
+
+            async submitDeleteGroup() {
+                if (!confirm("Atenção! Você tem certeza que deseja excluir este diretório?\n\n- Todas as pastas dentro dele também serão excluídas.\n- Os chats sairão destas pastas (Mas não serão excluídos do banco principal).")) {
+                    return;
+                }
+
+                const res = await Api.fetch('delete_group', { group_id: this.editingGroupId }, 'POST');
+                if (res.status === 'success') {
+                    this.closeEditGroupModal();
+                    this.showToast("Grupo excluído com sucesso!");
+                    
+                    // Recarrega o diretório atual
+                    const parentId = this.dirPath.length > 0 ? this.dirPath[this.dirPath.length - 1].id : null;
+                    this.loadDirectoryLevel(parentId);
                 } else {
                     this.showToast(res.message, "error");
                 }
@@ -458,7 +551,6 @@
             // --- HUB DO GRUPO DE CHATS (Estudar / Criar) ---
             
             switchTab(mode) {
-                // Alterna apenas as abas internas do Hub de Chat
                 document.getElementById('tab-study').classList.toggle('active', mode === 'study');
                 document.getElementById('tab-explore').classList.toggle('active', mode === 'explore');
                 
@@ -545,7 +637,6 @@
                 if (!this.currentStudyNode) return;
                 const targetNode = this.currentStudyNode;
                 
-                // Concede o XP da leitura antes de pular para derivação
                 await Api.fetch('submit_review', { node_id: targetNode }, 'POST');
                 
                 this.isDeriving = true;
@@ -576,7 +667,7 @@
                 this.currentNodeId = null;
                 this.isDeriving = false;
                 this.derivationBaseId = null;
-                this.switchTab('study'); // Volta pra aba estudo para ver a fila
+                this.switchTab('study'); 
             },
 
             async loadExplorePath(nodeId) {
